@@ -5,10 +5,11 @@
   "repository": "https://github.com/GSYNDRA/thesis-ecommerce-system.git",
   "author": "<hoangiang272003@gmail.com>",
   "license": "MIT",
-  "type": "module",
-  "scripts": {
-    "start": "nodemon server.js",
-    "watch": "node --watch server.js"
+  "type": "module", 
+
+  "scripts": { 
+    "start": "nodemon server.js", 
+    "watch": "node --watch server.js" 
   },
   "dependencies": {
     "express": "^5.1.0",
@@ -16,7 +17,7 @@
   },
   "devDependencies": {
     "compression": "^1.8.1",
-    "nodemon": "^3.1.10",
+    "nodemon": "^3.1.10", 
     "morgan": "^1.10.1"
   }
 }

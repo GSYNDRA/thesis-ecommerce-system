@@ -27,4 +27,14 @@ Notes: "yarn init" to set up the NODEJS Back-end environment.
   Place main logic in **services/** for maintainability.
 
 ---
+Inside package.json
+
+  "type": "module", // ESM
+
+  "start": "nodemon server.js", // run server with this command line
+
+  "watch": "node --watch server.js" // enables file watching mode
+
+  "nodemon": "^3.1.10", // auto-restart
+
 
