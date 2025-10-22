@@ -15,7 +15,15 @@ app.use(helmet())   // hide the X-Power-By => if hacker know that field =>abuse 
 
 app.use(compression())  //compress data size during transmission=>  makes your app faster and reduces bandwidth usage example: raw 141KB is converted into 1.4KB 
 
+app.use(express.json());    // parse json form
+
+app.use(express.urlencoded({ extended: true }));    // Parse form body from HTML forms
+
+
+
 // init database
+import './database/init.postgredb.js';
+
 
 // init routers
 app.get('/', (req, res, next)=> {

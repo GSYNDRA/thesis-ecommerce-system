@@ -5,19 +5,23 @@
   "repository": "https://github.com/GSYNDRA/thesis-ecommerce-system.git",
   "author": "<hoangiang272003@gmail.com>",
   "license": "MIT",
-  "type": "module", 
-
-  "scripts": { 
-    "start": "nodemon server.js", 
-    "watch": "node --watch server.js" 
+  "type": "module",
+  "scripts": {
+    "start": "nodemon server.js",
+    "watch": "node --watch server.js"
   },
   "dependencies": {
+    "dotenv": "^17.2.3",
     "express": "^5.1.0",
-    "helmet": "^8.1.0"
+    "helmet": "^8.1.0",
+    "pg": "^8.16.3",
+    "pg-hstore": "^2.3.4",
+    "sequelize": "^6.37.7"
   },
   "devDependencies": {
     "compression": "^1.8.1",
-    "nodemon": "^3.1.10", 
-    "morgan": "^1.10.1"
+    "morgan": "^1.10.1",
+    "nodemon": "^3.1.10",
+    "sequelize-auto": "^0.8.8"
   }
 }

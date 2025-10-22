@@ -37,4 +37,37 @@ Inside package.json
 
   "nodemon": "^3.1.10", // auto-restart
 
+Use **sequelize-auto** to reverse-engineer models from your existing PostgreSQL tables:
+
+  "yarn sequelize-auto -h localhost -d ecommerce -u user -x user -p 5432 --dialect postgres -o ./src/models -l esm"
+
+Why **Singleton Pattern** for connection with database?
+
+  Ensures only one active DB connection across the app.
+
+  Prevents performance issues caused by multiple redundant connections.
+
+  Makes the connection accessible from anywhere via the single instance.
+
+## ⚙️ Understanding `async` and `await` in JavaScript
+
+`async` and `await` are **modern JavaScript keywords** used to handle **asynchronous operations** (like connecting to databases, reading files, or making HTTP requests) in a way that looks and behaves more like synchronous code.
+
+`async` functions are marked , they automatically return **Promise** .
+
+`await` can only be used inside an async function. It pauses the execution of that function until the Promise is resolved (finished).
+
+
+**sequelize.sync()**
+
+  It creates or updates your tables automatically based on your model definitions in code.
+
+  It only affects the database schema (tables, columns).
+
+  It does not generate any .js or .ts model files for you.
+
+  Typically used during development or initial setup.
+
+  ---------------------------
+
 
