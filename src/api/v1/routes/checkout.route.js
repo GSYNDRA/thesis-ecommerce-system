@@ -18,7 +18,7 @@ const authMiddleWare = new AuthMiddleWare();
 checkoutRouter.get(
   "/preview",
   authMiddleWare.verifyAT1,
-  validationReq(previewCheckoutSchema),
+  // validationReq(previewCheckoutSchema),
   checkoutController.previewCheckout,
 );
 
