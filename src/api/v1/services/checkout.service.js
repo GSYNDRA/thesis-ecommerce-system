@@ -1,137 +1,3 @@
-// import {
-//   ConflictError,
-//   BadRequestError,
-//   UnauthorizedError,
-//   InternalServerError,
-//   ForbiddenError,
-//   ErrorResponse,
-//   NotFoundError,
-// } from "../utils/response.util.js";
-// import UserRepository from "../reponsitories/user.reponsitory.js";
-// import UserSessionRepository from "../reponsitories/userSession.reponsitory.js";
-// import CartRepository from "../reponsitories/cart.repository.js";
-// import CartProductRepository from "../reponsitories/cartProduct.reponsitory.js";
-// import ProductCatalogRepository from "../reponsitories/product_catalog.repository.js";
-// export class CheckoutService {
-//   constructor() {
-//     this.userRepository = new UserRepository();
-//     this.userSessionRepository = new UserSessionRepository();
-//     this.cartRepository = new CartRepository();
-//     this.cartProductRepository = new CartProductRepository();
-//     this.productCatalogRepository = new ProductCatalogRepository();
-//   }
-//   async previewCheckout(userId, payload) {
-    
-//   const { cartId, vouchers = [] } = payload; // assumes payload fields from validation
-
-//     // 1) Verify cart ownership + active status
-//     const cart = await this.cartRepository.findOne({
-//       id: cartId,
-//       user_id: userId,
-//       status: 1,
-//     });
-//     if (!cart) {
-//       throw new BadRequestError("Invalid cart for this user");
-//     }
-//       const checkout_order = {
-//       totalPrice: 0,
-//       feeShip: 0,          // plug in shipping calculation here
-//       totalDiscount: 0,    // plug in voucher/discount calc here
-//       totalCheckout: 0,    // will be totalPrice + feeShip - totalDiscount (set below)
-//     };
-
-//     // 2) Load cart items
-//     const cartItems = await this.cartProductRepository.findByCartId(cartId);
-//     if (!cartItems || cartItems.length === 0) {
-//       throw new BadRequestError("Cart is empty");
-//     }
-
-//     const variationIds = cartItems.map((i) => i.variation_id);
-
-//     // 3) Fetch variant details
-//     const variants = await this.productCatalogRepository.findVariantsFullInfoByIds(
-//       variationIds,
-//     );
-//     if (variants.length !== variationIds.length) {
-//       throw new BadRequestError("Some product variations do not exist");
-//     }
-
-//     const variantMap = new Map(variants.map((v) => [v.id, v]));
-
-//     // 4) Stock validation
-//     for (const item of cartItems) {
-//       const variant = variantMap.get(item.variation_id);
-//       if (!variant) throw new BadRequestError("Some product variations do not exist");
-//       if (item.quantity > variant.qty_in_stock) {
-//         throw new BadRequestError("Quantity exceeds available stock");
-//       }
-//     }
-
-//     // 5) Build response items and totals
-//     const items = cartItems.map((item) => {
-//       const variant = variantMap.get(item.variation_id);
-//       const productItem = variant?.product_item;
-//       const product = productItem?.product;
-
-//       return {
-//         variationId: item.variation_id,
-//         quantity: item.quantity,
-//         price: Number(item.price),
-//         stockRemaining: variant.qty_in_stock,
-//         product: product
-//           ? {
-//               id: product.id,
-//               name: product.product_name,
-//               slug: product.product_slug,
-//               rating: product.ratings_average,
-//             }
-//           : null,
-//         productItem: productItem
-//           ? {
-//               id: productItem.id,
-//               code: productItem.product_code,
-//               price: productItem.price,
-//             }
-//           : null,
-//         colour: productItem?.colour
-//           ? {
-//               id: productItem.colour.id,
-//               name: productItem.colour.colour_name,
-//             }
-//           : null,
-//         size: variant?.size
-//           ? { id: variant.size.id, name: variant.size.size_name }
-//           : null,
-//         image: productItem?.product_images?.[0] ?? null,
-//       };
-//     });
-
-//     const cartSubtotal = items.reduce(
-//       (sum, i) => sum + i.quantity * i.price,
-//       0,
-//     );
-//     checkout_order.totalPrice += cartSubtotal;
-
-//     const cartTotalItems = items.reduce((sum, i) => sum + i.quantity, 0);
-
-//     // 6) Voucher placeholder (apply logic later)
-//     const appliedVouchers = vouchers;
-    
-//     checkout_order.totalCheckout =
-//       checkout_order.totalPrice + checkout_order.feeShip - checkout_order.totalDiscount;
-//     return {
-//       cartId,
-//       cartSubtotal,
-//       cartTotalItems,
-//       items,
-//       vouchers: appliedVouchers,
-//       checkout_order,
-//     };
-//   }
-// }
-
-
-
 import {
   ConflictError,
   BadRequestError,
@@ -147,6 +13,8 @@ import CartRepository from "../reponsitories/cart.repository.js";
 import CartProductRepository from "../reponsitories/cartProduct.reponsitory.js";
 import ProductCatalogRepository from "../reponsitories/product_catalog.repository.js";
 import { DiscountService } from "./discount.service.js";
+
+const DEFAULT_SHIPPING_FEE = 40000;
 
 export class CheckoutService {
   constructor() {
@@ -238,7 +106,10 @@ export class CheckoutService {
     });
 
     const subtotal = items.reduce((sum, i) => sum + i.line_total, 0);
-    const shippingFee = Number(payload.shipping_fee ?? 0);
+    const shippingFee =
+      Number(payload.shipping_fee) > 0
+        ? Number(payload.shipping_fee)
+        : DEFAULT_SHIPPING_FEE;
 
     // 5) Always return full available vouchers for user to choose
     const [availableSystemRaw, availableShippingRaw] = await Promise.all([
@@ -256,7 +127,7 @@ export class CheckoutService {
         availableSystemRaw,
         subtotal,
       );
-      selectedShippingVoucher = this.discountService.pickBestVoucher(
+      selectedShippingVoucher = this.discountService.pickBestShippingVoucher(
         availableShippingRaw,
         shippingFee,
       );
@@ -272,7 +143,7 @@ export class CheckoutService {
       if (payload.shipping_discount_code) {
         selectedShippingVoucher = await this.discountService.validateDiscountCode({
           code: payload.shipping_discount_code,
-          allowedTypes: ["free_shipping"],
+          allowedTypes: ["free_shipping", "shipping"],
         });
       }
     }
@@ -284,6 +155,9 @@ export class CheckoutService {
     const shippingDiscount = selectedShippingVoucher
       ? this.discountService.calculateDiscount(selectedShippingVoucher, shippingFee)
       : 0;
+
+      // console.log("Selected System Voucher:", selectedSystemVoucher);
+      console.log("Selected Shipping Voucher:", selectedShippingVoucher);
 
     const discountBreakdown = this.discountService.buildDiscountBreakdown({
       mode: isManualVoucher ? "manual" : "auto",
