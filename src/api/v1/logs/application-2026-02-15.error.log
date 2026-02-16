@@ -1,0 +1,13 @@
+2026-02-15 12:23:35.305 --- ERROR --- SYSTEM --- 	Authorization header missing
+2026-02-15 12:51:16.342 --- ERROR --- SYSTEM --- 	ERR user_script:24: attempt to concatenate local 'orderId' (a nil value) script: 6139ab3cbda4d699988fc1db749a9b0c6b778a59, on @user_script:24.
+2026-02-15 13:00:27.047 --- ERROR --- SYSTEM --- 	INSUFFICIENT_STOCK for variant:25:reserved
+2026-02-15 13:00:27.060 --- ERROR --- SYSTEM --- 	INSUFFICIENT_STOCK for variant:25:reserved
+2026-02-15 13:01:50.209 --- ERROR --- SYSTEM --- 	Access token expired
+2026-02-15 13:04:33.917 --- ERROR --- SYSTEM --- 	Only 60 items left in stock
+2026-02-15 13:08:07.712 --- ERROR --- SYSTEM --- 	INSUFFICIENT_STOCK for variant:25:reserved
+2026-02-15 13:08:07.722 --- ERROR --- SYSTEM --- 	INSUFFICIENT_STOCK for variant:25:reserved
+2026-02-15 13:08:10.956 --- ERROR --- SYSTEM --- 	INSUFFICIENT_STOCK for variant:25:reserved
+2026-02-15 13:08:10.964 --- ERROR --- SYSTEM --- 	INSUFFICIENT_STOCK for variant:25:reserved
+2026-02-15 13:11:09.876 --- ERROR --- SYSTEM --- 	INSUFFICIENT_STOCK for variant:25:reserved
+2026-02-15 13:11:09.888 --- ERROR --- SYSTEM --- 	INSUFFICIENT_STOCK for variant:25:reserved
+2026-02-15 13:17:00.679 --- ERROR --- SYSTEM --- 	Access token expired

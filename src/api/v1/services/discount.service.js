@@ -1,4 +1,5 @@
 import DiscountRepository from "../reponsitories/discount.repository.js";
+import OrderDiscountRepository from "../reponsitories/orderDiscount.repository.js";
 import { BadRequestError } from "../utils/response.util.js";
 
 const SYSTEM_DISCOUNT_TYPES = ["fixed_amount", "percentage"];
@@ -8,6 +9,7 @@ const DEFAULT_SHIPPING_FEE = 40000;
 export class DiscountService {
   constructor() {
     this.discountRepository = new DiscountRepository();
+    this.orderDiscountRepository = new OrderDiscountRepository();
   }
 
   async applyDiscountsForPreview(userId, payload, pricing) {
@@ -43,12 +45,22 @@ export class DiscountService {
     );
   }
 
-  async getAvailableVouchersByTypes(_userId, discountTypes, orderAmount) {
+  async getAvailableVouchersByTypes(userId, discountTypes, orderAmount) {
     const vouchers = await this.discountRepository.findActiveDiscountsByTypes(
       discountTypes,
       orderAmount,
     );
-    return vouchers;
+    if (!vouchers || vouchers.length === 0) return [];
+
+    const voucherIds = vouchers.map((voucher) => voucher.id);
+    const usedDiscountIds = await this.orderDiscountRepository.getUsedDiscountIdsByUser(
+      userId,
+      voucherIds,
+    );
+
+    return vouchers.filter((voucher) =>
+      this.isVoucherEligibleForUser(voucher, orderAmount, usedDiscountIds),
+    );
   }
 
   async applyBestDiscounts(userId, subtotal, shippingFee) {
@@ -92,7 +104,7 @@ export class DiscountService {
     });
   }
 
-  async applyManualDiscounts(_userId, payload, subtotal, shippingFee) {
+  async applyManualDiscounts(userId, payload, subtotal, shippingFee) {
     let systemVoucher = null;
     let shippingVoucher = null;
     let systemDiscount = 0;
@@ -102,6 +114,8 @@ export class DiscountService {
       systemVoucher = await this.validateDiscountCode({
         code: payload.system_discount_code,
         allowedTypes: SYSTEM_DISCOUNT_TYPES,
+        userId,
+        orderAmount: subtotal,
       });
       systemDiscount = this.calculateDiscount(systemVoucher, subtotal);
     }
@@ -110,6 +124,8 @@ export class DiscountService {
       shippingVoucher = await this.validateDiscountCode({
         code: payload.shipping_discount_code,
         allowedTypes: SHIPPING_DISCOUNT_TYPES,
+        userId,
+        orderAmount: subtotal,
       });
       shippingDiscount = this.calculateDiscount(shippingVoucher, shippingFee);
     }
@@ -123,7 +139,7 @@ export class DiscountService {
     });
   }
 
-  async validateDiscountCode({ code, allowedTypes }) {
+  async validateDiscountCode({ code, allowedTypes, userId, orderAmount }) {
     const voucher = await this.discountRepository.findActiveDiscountByCode(code);
 
     if (!voucher) {
@@ -134,7 +150,41 @@ export class DiscountService {
       throw new BadRequestError("Discount code type is not supported here");
     }
 
+    const minOrderValue = Number(voucher.discount_min_order_value) || 0;
+    if ((Number(orderAmount) || 0) < minOrderValue) {
+      throw new BadRequestError(
+        `Order value must be at least ${minOrderValue} to use this discount code`,
+      );
+    }
+
+    const maxUses = Number(voucher.discount_max_uses) || 0;
+    const usersCount = Number(voucher.discount_users_count) || 0;
+    if (maxUses > 0 && usersCount >= maxUses) {
+      throw new BadRequestError("Discount code has reached maximum usage");
+    }
+
+    if (userId) {
+      const userUsed = await this.orderDiscountRepository.hasUserUsedDiscount(
+        userId,
+        voucher.id,
+      );
+      if (userUsed) {
+        throw new BadRequestError("You have already used this discount code");
+      }
+    }
+
     return voucher;
+  }
+
+  isVoucherEligibleForUser(voucher, orderAmount, usedDiscountIds) {
+    const minOrderValue = Number(voucher.discount_min_order_value) || 0;
+    const maxUses = Number(voucher.discount_max_uses) || 0;
+    const usersCount = Number(voucher.discount_users_count) || 0;
+    const isOrderEligible = (Number(orderAmount) || 0) >= minOrderValue;
+    const hasRemainingGlobalUses = maxUses <= 0 || usersCount < maxUses;
+    const isUnusedByUser = !usedDiscountIds.has(Number(voucher.id));
+
+    return isOrderEligible && hasRemainingGlobalUses && isUnusedByUser;
   }
 
   pickBestVoucher(vouchers, amount) {

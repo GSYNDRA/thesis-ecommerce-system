@@ -61,6 +61,8 @@ export default function initModels(sequelize) {
   attribute_type.hasMany(attribute_option, { as: "attribute_options", foreignKey: "attribute_type_id"});
   cart_product.belongsTo(cart, { as: "cart", foreignKey: "cart_id"});
   cart.hasMany(cart_product, { as: "cart_products", foreignKey: "cart_id"});
+  orders.belongsTo(cart, { as: "cart", foreignKey: "cart_id"});
+  cart.hasMany(orders, { as: "orders", foreignKey: "cart_id"});
   category.belongsTo(category, { as: "parent_cat", foreignKey: "parent_cat_id"});
   category.hasMany(category, { as: "categories", foreignKey: "parent_cat_id"});
   product.belongsTo(category, { as: "category", foreignKey: "category_id"});

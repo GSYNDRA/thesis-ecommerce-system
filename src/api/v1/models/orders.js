@@ -77,6 +77,14 @@ export default class orders extends Model {
         model: 'user',
         key: 'id'
       }
+    },
+    cart_id: {
+      type: DataTypes.BIGINT,
+      allowNull: true,
+      references: {
+        model: 'cart',
+        key: 'id'
+      }
     }
   }, {
     sequelize,

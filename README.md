@@ -40,7 +40,9 @@ Inside package.json
 Use **sequelize-auto** to reverse-engineer models from your existing PostgreSQL tables:
 
   "yarn sequelize-auto -h localhost -d ecommerce -u user -x user -p 5432 --dialect postgres -o ./src/models -l esm"
+sai 
 
+Delete data in REDIS: docker exec -it redis-server redis-cli FLUSHALL
 Why **Singleton Pattern** for connection with database?
 
   Ensures only one active DB connection across the app.

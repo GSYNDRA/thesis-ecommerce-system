@@ -22,4 +22,14 @@ checkoutRouter.get(
   checkoutController.previewCheckout,
 );
 
+/**
+ * @route   POST /api/v1/checkout/place-order
+ * @desc    Place an order from checkout
+ * @access  Private
+ */
+checkoutRouter.post(
+  "/place-order",
+  authMiddleWare.verifyAT1,
+  checkoutController.placeOrder,
+);
 export default checkoutRouter;

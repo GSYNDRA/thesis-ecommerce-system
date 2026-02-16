@@ -1,66 +1,66 @@
-import app from './src/app.js'
-import Database from './src/api/v1/database/init.postgredb.js'
-import PostgreSQLMonitor from './src/monitor/postgreDB.monitor.js'
-import config from './src/api/v1/configs/config.sequelize.js'
-import initModels from './src/api/v1/models/init-models.js'
+import app from "./src/app.js";
+import Database from "./src/api/v1/database/init.postgredb.js";
+import redisClient from "./src/api/v1/database/init.redis.js";
+import reservationExpirySubscriber from "./src/api/v1/services/reservationExpiry.subscriber.js";
+import PostgreSQLMonitor from "./src/monitor/postgreDB.monitor.js";
+import config from "./src/api/v1/configs/config.sequelize.js";
 
-const PORT = config.app.port || 3030
+const PORT = config.app.port || 3030;
 
 async function startServer() {
-  let server
-  const isTest = config.nodeEnv === 'test'
+  let server;
+  const isTest = config.nodeEnv === "test";
+  const db = Database.getInstance();
 
-  const db = Database.getInstance()
+  // Expose Redis globally for checkout reservation flow.
+  globalThis.redisClient = redisClient;
 
   try {
     if (!isTest) {
-      // 1️⃣ Connect DB
-      console.log('🔌 Connecting to PostgreSQL...')
-      await db.connect('ecommerce')   // 👈 ensure init 
-      const sequelize = db.getSequelize()
+      console.log("Connecting to PostgreSQL...");
+      await db.connect("ecommerce");
+      const sequelize = db.getSequelize();
 
-      await sequelize.authenticate()
-      console.log('✅ PostgreSQL connected')
+      await sequelize.authenticate();
+      console.log("PostgreSQL connected");
+      await reservationExpirySubscriber.start();
 
-      // initModels(sequelize)
-      console.log('✅ Sequelize models initialized')
+      const pgMonitor = PostgreSQLMonitor.getInstance(sequelize);
+      // pgMonitor.startMonitoring();
 
-      // 2️⃣ Start Monitor (inject sequelize)
-      const pgMonitor = PostgreSQLMonitor.getInstance(sequelize)
-      // pgMonitor.startMonitoring()
-
-      // 3️⃣ Graceful shutdown
       const gracefulShutdown = async (signal) => {
-        console.log(`\n🛑 ${signal} received. Graceful shutdown...`)
+        console.log(`\n${signal} received. Graceful shutdown...`);
 
         try {
           server?.close(async () => {
-            console.log('🛑 Express server closed')
+            console.log("Express server closed");
 
-            // pgMonitor.stopMonitoring()
-            await db.disconnect()
+            // pgMonitor.stopMonitoring();
+            await reservationExpirySubscriber.stop();
+            if (redisClient.isOpen) {
+              await redisClient.quit();
+            }
+            await db.disconnect();
 
-            process.exit(0)
-          })
+            process.exit(0);
+          });
         } catch (err) {
-          console.error('❌ Shutdown error:', err)
-          process.exit(1)
-        }d
-      }
+          console.error("Shutdown error:", err);
+          process.exit(1);
+        }
+      };
 
-      process.on('SIGINT', gracefulShutdown)
-      process.on('SIGTERM', gracefulShutdown)
+      process.on("SIGINT", gracefulShutdown);
+      process.on("SIGTERM", gracefulShutdown);
     }
 
-    // 4️⃣ Start HTTP server
     server = app.listen(PORT, () => {
-      console.log(`🚀 WSV eCommerce running on port ${PORT}`)
-    })
-
+      console.log(`WSV eCommerce running on port ${PORT}`);
+    });
   } catch (error) {
-    console.error('❌ Failed to start server:', error)
-    process.exit(1)
+    console.error("Failed to start server:", error);
+    process.exit(1);
   }
 }
 
-startServer()
+startServer();

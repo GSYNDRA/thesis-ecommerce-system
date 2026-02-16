@@ -30,4 +30,12 @@ export default class DiscountRepository extends BaseRepository {
       discount_end: { [Op.gte]: now },
     });
   }
+
+  async findByIds(discountIds, options = {}) {
+    if (!Array.isArray(discountIds) || discountIds.length === 0) return [];
+    return this.getModel().findAll({
+      where: { id: { [Op.in]: discountIds } },
+      ...options,
+    });
+  }
 }
