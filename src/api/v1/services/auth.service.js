@@ -17,6 +17,7 @@ import { USER_ROLE } from "../constants/common.constant.js";
 import crypto from "crypto";
 import envConfig from "../configs/config.sequelize.js";
 import { Op } from "sequelize";
+import { token } from "morgan";
 
 // Email verification token expiry (in minutes)
 const EMAIL_VERIFY_EXPIRES_MINUTES = 30;
@@ -162,6 +163,7 @@ export class AuthService {
         normalizedEmail,
         verifyUrl
       );
+      console.log("Raw email verification token:", rawEmailVerificationToken);
       if (!sent) {
         throw new Error("Failed to send verification email");
       }
@@ -206,7 +208,7 @@ export class AuthService {
     );
 
     const verifyUrl = `${envConfig.app.url}/verify-email?token=${rawEmailVerificationToken}`;
-
+    console.log("Resent email verification token:", rawEmailVerificationToken);
     await EmailServices.sendVerifyEmail(user.email, verifyUrl);
   }
 

@@ -1,0 +1,11 @@
+2026-02-18 00:02:09.877 --- ERROR --- SYSTEM --- 	This cart is locked for checkout on another session. Please complete payment or wait for reservation timeout.
+2026-02-18 00:02:12.900 --- ERROR --- SYSTEM --- 	This cart is locked for checkout on another session. Please complete payment or wait for reservation timeout.
+2026-02-18 15:56:53.472 --- ERROR --- SYSTEM --- 	Verification token is invalid or has expired
+2026-02-18 15:57:31.597 --- ERROR --- SYSTEM --- 	Verification token is invalid or has expired
+2026-02-18 15:57:37.041 --- ERROR --- SYSTEM --- 	Verification token is invalid or has expired
+2026-02-18 15:59:23.363 --- ERROR --- SYSTEM --- 	Verification token is invalid or has expired
+2026-02-18 15:59:49.087 --- ERROR --- SYSTEM --- 	Verification token is invalid or has expired
+2026-02-18 16:12:16.350 --- ERROR --- SYSTEM --- 	Only 21 items left in stock
+2026-02-18 16:13:05.308 --- ERROR --- SYSTEM --- 	Invalid cart for this user
+2026-02-18 16:15:28.377 --- ERROR --- SYSTEM --- 	Quantity exceeds available stock for variation 25. Available: 13
+2026-02-18 16:16:31.158 --- ERROR --- SYSTEM --- 	Access token expired

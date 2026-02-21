@@ -18,7 +18,7 @@ import OrderRepository from "../reponsitories/order.repository.js";
 import { DiscountService } from "./discount.service.js";
 
 const DEFAULT_SHIPPING_FEE = 40;
-const RESERVATION_TTL_SECONDS = 300;
+const RESERVATION_TTL_SECONDS = 3000;
 const MOMO_API_ENDPOINT =
   process.env.MOMO_API_ENDPOINT || "https://test-payment.momo.vn/v2/gateway/api/create";
 const MOMO_PARTNER_CODE = process.env.MOMO_PARTNER_CODE || "MOMO";
@@ -555,9 +555,9 @@ export class CheckoutService {
 
     let momoPayment = null;
     try {
+      await order.reload();
       momoPayment = await this.createMoMoPayment({
         order,
-        amount: checkoutOrder.totalCheckout,
       });
       await this.orderRepository.update(
         { id: order.id },
@@ -588,10 +588,7 @@ export class CheckoutService {
         provider: "momo",
         request_id: momoPayment?.requestId ?? null,
         order_id: momoPayment?.orderId ?? String(order.id),
-        amount: Math.max(
-          Math.round((Number(checkoutOrder.totalCheckout) || 0) * MOMO_AMOUNT_MULTIPLIER),
-          0,
-        ),
+        amount: Number(momoPayment?.amount ?? 0),
         pay_url: momoPayment?.payUrl ?? null,
         deeplink: momoPayment?.deeplink ?? null,
         qr_code_url: momoPayment?.qrCodeUrl ?? null,
@@ -703,9 +700,9 @@ export class CheckoutService {
     return uniqueVouchers;
   }
 
-  async createMoMoPayment({ order, amount }) {
+  async createMoMoPayment({ order }) {
     const normalizedAmount = Math.max(
-      Math.round((Number(amount) || 0) * MOMO_AMOUNT_MULTIPLIER),
+      Math.round((Number(order?.net_amount) || 0) * MOMO_AMOUNT_MULTIPLIER),
       0,
     );
     if (normalizedAmount <= 0) {

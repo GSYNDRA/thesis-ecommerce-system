@@ -4,6 +4,7 @@ import UserRepository from "../reponsitories/user.reponsitory.js";
 import UserSessionRepository from "../reponsitories/userSession.reponsitory.js";
 import CartProductRepository from "../reponsitories/cartProduct.reponsitory.js";
 import CartRepository from "../reponsitories/cart.repository.js";
+import OrderRepository from "../reponsitories/order.repository.js";
 import {
   ConflictError,
   BadRequestError,
@@ -21,6 +22,7 @@ export class CartService {
     this.userRepository = new UserRepository();
     this.userSessionRepository = new UserSessionRepository();
     this.productCatalogRepository = new ProductCatalogRepository();
+    this.orderRepository = new OrderRepository();
   }
 
   /* ----------------------------------------------------
@@ -86,6 +88,16 @@ export class CartService {
         console.log("No active cart found, creating a new one...");
         cart = await this.cartRepository.createCart(userId);
 
+      }
+
+      /* ----------------------------------------------------
+       * 6.1 Block cart mutation while checkout order is active
+       * -------------------------------------------------- */
+      const activeOrder = await this.orderRepository.findOpenOrderByCartId(cart.id);
+      if (activeOrder) {
+        throw new ConflictError(
+          "This cart is locked for checkout on another session. Please complete payment or wait for reservation timeout.",
+        );
       }
 
       /* ----------------------------------------------------

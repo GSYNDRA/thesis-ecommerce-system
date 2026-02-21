@@ -1,0 +1,14 @@
+2026-02-17 00:08:43.307 --- ERROR --- SYSTEM --- 	You have already used this discount code
+2026-02-17 00:09:03.527 --- ERROR --- SYSTEM --- 	You have already used this discount code
+2026-02-17 00:12:17.890 --- ERROR --- SYSTEM --- 	Access token expired
+2026-02-17 00:14:46.407 --- ERROR --- SYSTEM --- 	Access token expired
+2026-02-17 00:16:31.895 --- ERROR --- SYSTEM --- 	Access token expired
+2026-02-17 00:24:54.390 --- ERROR --- SYSTEM --- 	MoMo amount mismatch. Expected 285530, got 285528
+2026-02-17 23:29:00.527 --- ERROR --- SYSTEM --- 	Access token expired
+2026-02-17 23:29:11.769 --- ERROR --- SYSTEM --- 	You have already used this discount code
+2026-02-17 23:29:23.878 --- ERROR --- SYSTEM --- 	You have already used this discount code
+2026-02-17 23:54:32.718 --- ERROR --- SYSTEM --- 	This cart is locked for checkout on another session. Please complete payment or wait for reservation timeout.
+2026-02-17 23:54:37.865 --- ERROR --- SYSTEM --- 	This cart is locked for checkout on another session. Please complete payment or wait for reservation timeout.
+2026-02-17 23:54:38.718 --- ERROR --- SYSTEM --- 	This cart is locked for checkout on another session. Please complete payment or wait for reservation timeout.
+2026-02-17 23:54:39.429 --- ERROR --- SYSTEM --- 	This cart is locked for checkout on another session. Please complete payment or wait for reservation timeout.
+2026-02-17 23:54:40.619 --- ERROR --- SYSTEM --- 	This cart is locked for checkout on another session. Please complete payment or wait for reservation timeout.

@@ -12,8 +12,9 @@ export default class OrderRepository extends BaseRepository {
       where: {
         cart_id: cartId,
         order_status: {
-          [Op.in]: ["pending", "confirmed", "processing"],
+          [Op.in]: ["pending", "confirmed"],
         },
+        payment_status: "pending",
       },
       order: [["id", "DESC"]],
     });

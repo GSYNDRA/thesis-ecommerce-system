@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import { Op } from "sequelize";
 import {
   BadRequestError,
   InternalServerError,
@@ -6,6 +7,7 @@ import {
 } from "../utils/response.util.js";
 import OrderRepository from "../reponsitories/order.repository.js";
 import CartProductRepository from "../reponsitories/cartProduct.reponsitory.js";
+import CartRepository from "../reponsitories/cart.repository.js";
 import ProductCatalogRepository from "../reponsitories/product_catalog.repository.js";
 import OrderProductRepository from "../reponsitories/orderProduct.repository.js";
 import OrderDiscountRepository from "../reponsitories/orderDiscount.repository.js";
@@ -20,6 +22,7 @@ export class PaymentService {
   constructor() {
     this.orderRepository = new OrderRepository();
     this.cartProductRepository = new CartProductRepository();
+    this.cartRepository = new CartRepository();
     this.productCatalogRepository = new ProductCatalogRepository();
     this.orderProductRepository = new OrderProductRepository();
     this.orderDiscountRepository = new OrderDiscountRepository();
@@ -279,6 +282,68 @@ export class PaymentService {
     }
   }
 
+  async clearCartAfterPayment(order, transaction) {
+    if (!order?.cart_id) return;
+
+    await this.cartProductRepository.getModel().destroy({
+      where: { cart_id: order.cart_id },
+      transaction,
+    });
+
+    await this.cartRepository.getModel().update(
+      {
+        cart_count_products: 0,
+        cart_total_items: 0,
+        cart_subtotal: 0,
+      },
+      {
+        where: { id: order.cart_id },
+        transaction,
+      },
+    );
+  }
+
+  async decrementVariationStockAfterPayment(order, transaction) {
+    const orderProducts = await this.orderProductRepository.findByOrderId(order.id, {
+      attributes: ["variation_id", "quantity"],
+      transaction,
+      raw: true,
+    });
+    if (!orderProducts.length) {
+      throw new InternalServerError("No order items found to finalize stock update");
+    }
+
+    const qtyByVariation = new Map();
+    for (const item of orderProducts) {
+      const variationId = Number(item.variation_id);
+      const quantity = Math.max(Number(item.quantity) || 0, 0);
+      if (!variationId || quantity <= 0) continue;
+      qtyByVariation.set(variationId, (qtyByVariation.get(variationId) || 0) + quantity);
+    }
+
+    const Variation = this.productCatalogRepository.models.product_variation;
+    for (const [variationId, quantity] of qtyByVariation.entries()) {
+      const [affectedCount] = await Variation.update(
+        {
+          qty_in_stock: this.orderRepository.sequelize.literal(`qty_in_stock - ${quantity}`),
+        },
+        {
+          where: {
+            id: variationId,
+            qty_in_stock: { [Op.gte]: quantity },
+          },
+          transaction,
+        },
+      );
+
+      if (affectedCount !== 1) {
+        throw new BadRequestError(
+          `Insufficient stock when finalizing paid order for variation ${variationId}`,
+        );
+      }
+    }
+  }
+
   async handleMoMoIpn(payload) {
     this.verifyMoMoSignature(payload);
 
@@ -342,6 +407,7 @@ export class PaymentService {
       }
 
       await this.upsertOrderProducts(lockedOrder, reservationSnapshot, transaction);
+      await this.decrementVariationStockAfterPayment(lockedOrder, transaction);
       await this.upsertOrderDiscounts(lockedOrder, reservationSnapshot, transaction);
 
       await lockedOrder.update(
@@ -354,6 +420,8 @@ export class PaymentService {
         },
         { transaction },
       );
+
+      await this.clearCartAfterPayment(lockedOrder, transaction);
       finalState = "paid";
     });
 

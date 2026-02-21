@@ -39,6 +39,16 @@
             "date": 1771219578667,
             "name": "C:\\Users\\hoang\\OneDrive\\Documents\\TERM 8\\THESIS PROJECT\\Ecommerce\\thesis-ecommerce-system\\src\\api\\v1\\logs\\application-2026-02-16.error.log",
             "hash": "290ead83c09f55cfde2c42bbe259b366d9657b4350e5ee3441a2a50e8a742a46"
+        },
+        {
+            "date": 1771261723321,
+            "name": "C:\\Users\\hoang\\OneDrive\\Documents\\TERM 8\\THESIS PROJECT\\Ecommerce\\thesis-ecommerce-system\\src\\api\\v1\\logs\\application-2026-02-17.error.log",
+            "hash": "9a31bc92ad7973a30fe7cf0998aff6ce669f223e77543dae9e037911816f88ad"
+        },
+        {
+            "date": 1771347648612,
+            "name": "C:\\Users\\hoang\\OneDrive\\Documents\\TERM 8\\THESIS PROJECT\\Ecommerce\\thesis-ecommerce-system\\src\\api\\v1\\logs\\application-2026-02-18.error.log",
+            "hash": "f8fc2b268cb64616ce86dbdd61a2d9a3903e7b3cad572940479ea96760606470"
         }
     ],
     "hashType": "sha256"
