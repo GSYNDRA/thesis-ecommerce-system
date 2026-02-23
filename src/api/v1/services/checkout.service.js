@@ -18,7 +18,7 @@ import OrderRepository from "../reponsitories/order.repository.js";
 import { DiscountService } from "./discount.service.js";
 
 const DEFAULT_SHIPPING_FEE = 40;
-const RESERVATION_TTL_SECONDS = 3000;
+const RESERVATION_TTL_SECONDS = 30;
 const MOMO_API_ENDPOINT =
   process.env.MOMO_API_ENDPOINT || "https://test-payment.momo.vn/v2/gateway/api/create";
 const MOMO_PARTNER_CODE = process.env.MOMO_PARTNER_CODE || "MOMO";

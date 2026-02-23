@@ -41,6 +41,8 @@ Use **sequelize-auto** to reverse-engineer models from your existing PostgreSQL 
 
   "yarn sequelize-auto -h localhost -d ecommerce -u user -x user -p 5432 --dialect postgres -o ./src/models -l esm"
 sai 
+Trong models folder => có 1 file updateAt mình chỉnh sủa để không bị bug => không nên dùng sequelize-auto cho toàn bộ
+docker run -d --name redis-server -p 6379:6379 redis:7 redis-server --notify-keyspace-events Ex => " For create a DOCKER container"
 
 Delete data in REDIS: docker exec -it redis-server redis-cli FLUSHALL
 Why **Singleton Pattern** for connection with database?
