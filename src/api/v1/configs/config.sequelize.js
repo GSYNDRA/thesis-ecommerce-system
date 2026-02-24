@@ -17,6 +17,15 @@ if (!fs.existsSync(path.resolve('.env'))) {
  * ENV SCHEMA VALIDATION
  * =========================
  */
+const envBoolean = z.preprocess((value) => {
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase()
+    if (['true', '1', 'yes', 'on'].includes(normalized)) return true
+    if (['false', '0', 'no', 'off', ''].includes(normalized)) return false
+  }
+  return value
+}, z.boolean())
+
 const envSchema = z.object({
   // App
   NODE_ENV: z.enum(['development', 'production']).default('development'),
@@ -57,6 +66,55 @@ const envSchema = z.object({
   // ===== APP =====
   APP_URL: z.string().url(),
 
+  // ===== Chat =====
+  CHAT_ENABLED: envBoolean.default(false),
+  CHAT_TYPING_TTL_SECONDS: z.coerce.number().int().positive().default(3),
+  CHAT_HEARTBEAT_INTERVAL_SECONDS: z.coerce.number().int().positive().default(5),
+  CHAT_HEARTBEAT_TIMEOUT_SECONDS: z.coerce.number().int().positive().default(15),
+  CHAT_MAX_CONCURRENT_PER_STAFF: z.coerce.number().int().positive().default(3),
+  CHAT_AI_RESPONSE_TIMEOUT_MS: z.coerce.number().int().positive().default(12000),
+  CHAT_HISTORY_LIMIT: z.coerce.number().int().positive().default(30),
+  CHAT_REDIS_PREFIX: z.string().min(1).default('chat'),
+
+  // ===== AI =====
+  AI_PROVIDER: z.enum(['openai', 'openrouter']).default('openai'),
+  OPENAI_API_KEY: z.string().default(''),
+  OPENAI_MODEL: z.string().default('gpt-4o-mini'),
+  OPENAI_MAX_TOKENS: z.coerce.number().int().positive().default(300),
+  OPENAI_TEMPERATURE: z.coerce.number().min(0).max(2).default(0.4),
+  OPENROUTER_API_KEY: z.string().default(''),
+  OPENROUTER_BASE_URL: z.string().url().default('https://openrouter.ai/api/v1'),
+  OPENROUTER_MODEL: z.string().default('upstage/solar-pro-3:free'),
+  OPENROUTER_REASONING_ENABLED: envBoolean.default(false)
+}).superRefine((data, ctx) => {
+  if (data.CHAT_HEARTBEAT_TIMEOUT_SECONDS <= data.CHAT_HEARTBEAT_INTERVAL_SECONDS) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'CHAT_HEARTBEAT_TIMEOUT_SECONDS must be greater than CHAT_HEARTBEAT_INTERVAL_SECONDS',
+      path: ['CHAT_HEARTBEAT_TIMEOUT_SECONDS']
+    })
+  }
+
+  if (data.CHAT_ENABLED && data.AI_PROVIDER === 'openai' && !data.OPENAI_API_KEY.trim()) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'OPENAI_API_KEY is required when CHAT_ENABLED=true and AI_PROVIDER=openai',
+      path: ['OPENAI_API_KEY']
+    })
+  }
+
+  if (
+    data.CHAT_ENABLED &&
+    data.AI_PROVIDER === 'openrouter' &&
+    !data.OPENROUTER_API_KEY.trim()
+  ) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message:
+        'OPENROUTER_API_KEY is required when CHAT_ENABLED=true and AI_PROVIDER=openrouter',
+      path: ['OPENROUTER_API_KEY']
+    })
+  }
 })
 
 const parsed = envSchema.safeParse(process.env)
@@ -124,5 +182,32 @@ export default {
   email: {
     admin: env.EMAIL_ADMIN,
     appPassword: env.EMAIL_APP_PASSWORD
+  },
+
+  chat: {
+    enabled: env.CHAT_ENABLED,
+    typingTtlSeconds: env.CHAT_TYPING_TTL_SECONDS,
+    heartbeatIntervalSeconds: env.CHAT_HEARTBEAT_INTERVAL_SECONDS,
+    heartbeatTimeoutSeconds: env.CHAT_HEARTBEAT_TIMEOUT_SECONDS,
+    maxConcurrentPerStaff: env.CHAT_MAX_CONCURRENT_PER_STAFF,
+    aiResponseTimeoutMs: env.CHAT_AI_RESPONSE_TIMEOUT_MS,
+    historyLimit: env.CHAT_HISTORY_LIMIT,
+    redisPrefix: env.CHAT_REDIS_PREFIX
+  },
+
+  ai: {
+    provider: env.AI_PROVIDER,
+    openai: {
+      apiKey: env.OPENAI_API_KEY,
+      model: env.OPENAI_MODEL,
+      maxTokens: env.OPENAI_MAX_TOKENS,
+      temperature: env.OPENAI_TEMPERATURE
+    },
+    openrouter: {
+      apiKey: env.OPENROUTER_API_KEY,
+      baseUrl: env.OPENROUTER_BASE_URL,
+      model: env.OPENROUTER_MODEL,
+      reasoningEnabled: env.OPENROUTER_REASONING_ENABLED
+    }
   }
 }

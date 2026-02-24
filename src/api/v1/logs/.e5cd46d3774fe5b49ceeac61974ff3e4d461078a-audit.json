@@ -6,11 +6,6 @@
     "auditLog": "C:\\Users\\hoang\\OneDrive\\Documents\\TERM 8\\THESIS PROJECT\\Ecommerce\\thesis-ecommerce-system\\src\\api\\v1\\logs\\.e5cd46d3774fe5b49ceeac61974ff3e4d461078a-audit.json",
     "files": [
         {
-            "date": 1770636028353,
-            "name": "C:\\Users\\hoang\\OneDrive\\Documents\\TERM 8\\THESIS PROJECT\\Ecommerce\\thesis-ecommerce-system\\src\\api\\v1\\logs\\application-2026-02-09.info.log",
-            "hash": "4f500974a069e9df0cddac2961e9f192e344175295a40a267bd05ac0a0283f20"
-        },
-        {
             "date": 1770706089953,
             "name": "C:\\Users\\hoang\\OneDrive\\Documents\\TERM 8\\THESIS PROJECT\\Ecommerce\\thesis-ecommerce-system\\src\\api\\v1\\logs\\application-2026-02-10.info.log",
             "hash": "3dd18c803368d3d80673720efd3e93f5527a5526ba4b4f914ca79e1943218ccd"
@@ -54,6 +49,11 @@
             "date": 1771834553593,
             "name": "C:\\Users\\hoang\\OneDrive\\Documents\\TERM 8\\THESIS PROJECT\\Ecommerce\\thesis-ecommerce-system\\src\\api\\v1\\logs\\application-2026-02-23.info.log",
             "hash": "2d7a6247568270814c91ec81c5020672e8b2534290160bddb1e5bd3a42c317e7"
+        },
+        {
+            "date": 1771897954379,
+            "name": "C:\\Users\\hoang\\OneDrive\\Documents\\TERM 8\\THESIS PROJECT\\Ecommerce\\thesis-ecommerce-system\\src\\api\\v1\\logs\\application-2026-02-24.info.log",
+            "hash": "ac4069678a4ad7a53643876aa906840c30d99fb8556b6f78df7f351c57f709f4"
         }
     ],
     "hashType": "sha256"
