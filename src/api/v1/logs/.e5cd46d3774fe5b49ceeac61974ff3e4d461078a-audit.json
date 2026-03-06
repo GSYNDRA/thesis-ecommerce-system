@@ -6,46 +6,6 @@
     "auditLog": "C:\\Users\\hoang\\OneDrive\\Documents\\TERM 8\\THESIS PROJECT\\Ecommerce\\thesis-ecommerce-system\\src\\api\\v1\\logs\\.e5cd46d3774fe5b49ceeac61974ff3e4d461078a-audit.json",
     "files": [
         {
-            "date": 1770706089953,
-            "name": "C:\\Users\\hoang\\OneDrive\\Documents\\TERM 8\\THESIS PROJECT\\Ecommerce\\thesis-ecommerce-system\\src\\api\\v1\\logs\\application-2026-02-10.info.log",
-            "hash": "3dd18c803368d3d80673720efd3e93f5527a5526ba4b4f914ca79e1943218ccd"
-        },
-        {
-            "date": 1770884354466,
-            "name": "C:\\Users\\hoang\\OneDrive\\Documents\\TERM 8\\THESIS PROJECT\\Ecommerce\\thesis-ecommerce-system\\src\\api\\v1\\logs\\application-2026-02-12.info.log",
-            "hash": "9f240e15ddb9b983b236af92dd8a8820c7727eb1658ad20fab536750a214558c"
-        },
-        {
-            "date": 1770954379987,
-            "name": "C:\\Users\\hoang\\OneDrive\\Documents\\TERM 8\\THESIS PROJECT\\Ecommerce\\thesis-ecommerce-system\\src\\api\\v1\\logs\\application-2026-02-13.info.log",
-            "hash": "79b55a9c1c0938cb5e7ffa200f7839e31d809baf1f813613bb897c0c682a29d3"
-        },
-        {
-            "date": 1771082890781,
-            "name": "C:\\Users\\hoang\\OneDrive\\Documents\\TERM 8\\THESIS PROJECT\\Ecommerce\\thesis-ecommerce-system\\src\\api\\v1\\logs\\application-2026-02-14.info.log",
-            "hash": "ce1a0a13234570d07ebeb6d56d4ea7710ea6211a264aa646bafb3a2f9bea5be7"
-        },
-        {
-            "date": 1771088653542,
-            "name": "C:\\Users\\hoang\\OneDrive\\Documents\\TERM 8\\THESIS PROJECT\\Ecommerce\\thesis-ecommerce-system\\src\\api\\v1\\logs\\application-2026-02-15.info.log",
-            "hash": "8d8416caa91dd72cf9ca096613f5bb58b0eed83c581a75cbff1a3ef6a1a0edb3"
-        },
-        {
-            "date": 1771219578650,
-            "name": "C:\\Users\\hoang\\OneDrive\\Documents\\TERM 8\\THESIS PROJECT\\Ecommerce\\thesis-ecommerce-system\\src\\api\\v1\\logs\\application-2026-02-16.info.log",
-            "hash": "a8c4e2d5550737a624a46641189e0f879d64120257b0a9fc91b073a213a37e06"
-        },
-        {
-            "date": 1771261723314,
-            "name": "C:\\Users\\hoang\\OneDrive\\Documents\\TERM 8\\THESIS PROJECT\\Ecommerce\\thesis-ecommerce-system\\src\\api\\v1\\logs\\application-2026-02-17.info.log",
-            "hash": "32db945be3ce0bdee1421b19f6fcc5a3a28779925a1dfcb581447f92498f586b"
-        },
-        {
-            "date": 1771347648607,
-            "name": "C:\\Users\\hoang\\OneDrive\\Documents\\TERM 8\\THESIS PROJECT\\Ecommerce\\thesis-ecommerce-system\\src\\api\\v1\\logs\\application-2026-02-18.info.log",
-            "hash": "6ffc6c06203421decf83a40a2efed6e975240d29e5a5395692fbddbbe2be49eb"
-        },
-        {
             "date": 1771834553593,
             "name": "C:\\Users\\hoang\\OneDrive\\Documents\\TERM 8\\THESIS PROJECT\\Ecommerce\\thesis-ecommerce-system\\src\\api\\v1\\logs\\application-2026-02-23.info.log",
             "hash": "2d7a6247568270814c91ec81c5020672e8b2534290160bddb1e5bd3a42c317e7"
@@ -54,6 +14,16 @@
             "date": 1771897954379,
             "name": "C:\\Users\\hoang\\OneDrive\\Documents\\TERM 8\\THESIS PROJECT\\Ecommerce\\thesis-ecommerce-system\\src\\api\\v1\\logs\\application-2026-02-24.info.log",
             "hash": "ac4069678a4ad7a53643876aa906840c30d99fb8556b6f78df7f351c57f709f4"
+        },
+        {
+            "date": 1771991551975,
+            "name": "C:\\Users\\hoang\\OneDrive\\Documents\\TERM 8\\THESIS PROJECT\\Ecommerce\\thesis-ecommerce-system\\src\\api\\v1\\logs\\application-2026-02-25.info.log",
+            "hash": "43317efca4f985e06d2a498291ce200adabd94367b3b82816ee3e41d90effcc3"
+        },
+        {
+            "date": 1772764449869,
+            "name": "C:\\Users\\hoang\\OneDrive\\Documents\\TERM 8\\THESIS PROJECT\\Ecommerce\\thesis-ecommerce-system\\src\\api\\v1\\logs\\application-2026-03-06.info.log",
+            "hash": "eabcce4ea1f4de009ec547f20a81dc0435ea1492571feb7b9aeecf878bd79edc"
         }
     ],
     "hashType": "sha256"

@@ -26,4 +26,14 @@ export default class OrderRepository extends BaseRepository {
       ...options,
     });
   }
+
+  async findByIdAndCustomer(orderId, customerId, options = {}) {
+    return this.getModel().findOne({
+      where: {
+        id: orderId,
+        customer_id: customerId,
+      },
+      ...options,
+    });
+  }
 }

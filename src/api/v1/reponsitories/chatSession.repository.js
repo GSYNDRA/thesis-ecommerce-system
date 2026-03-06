@@ -40,6 +40,17 @@ export default class ChatSessionRepository extends BaseRepository {
     });
   }
 
+  async findOldestPendingWithoutStaff(options = {}) {
+    return this.getModel().findOne({
+      where: {
+        status: "escalation_pending",
+        current_staff_id: null,
+      },
+      order: [["updated_at", "ASC"]],
+      ...options,
+    });
+  }
+
   async updateBySessionUuid(sessionUuid, updates, options = {}) {
     return this.getModel().update(
       { ...updates, updated_at: new Date() },

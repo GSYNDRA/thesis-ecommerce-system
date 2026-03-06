@@ -142,3 +142,13 @@ export const resendOtpSchema = z.object({
       .trim(),
   }),
 });
+
+export const resendVerificationEmailSchema = z.object({
+  body: z.object({
+    email: z
+      .string({ required_error: UserMessage.EMAIL_IS_REQUIRED })
+      .email(UserMessage.EMAIL_IS_INVALID)
+      .toLowerCase()
+      .trim(),
+  }),
+});

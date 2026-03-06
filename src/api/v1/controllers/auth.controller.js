@@ -126,5 +126,18 @@ resetPassword = async (req, res, next) => {
     }
   };
 
+  resendVerificationEmail = async (req, res, next) => {
+    try {
+      const { email } = req.body;
+      const result = await this.authServices.resendVerificationEmail(email);
+      SuccessResponse.ok(
+        result,
+        "If the email exists and is not verified, a verification email has been sent.",
+      ).send(res);
+    } catch (error) {
+      next(error);
+    }
+  };
+
 
 }

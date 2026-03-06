@@ -11,5 +11,11 @@ const paymentController = new PaymentController();
  */
 paymentRouter.post("/momo/ipn", paymentController.momoIpn);
 
-export default paymentRouter;
+/**
+ * @route   GET /api/v1/payment/momo/redirect
+ * @desc    Relay MoMo redirect to frontend route
+ * @access  Public
+ */
+paymentRouter.get("/momo/redirect", paymentController.momoRedirect);
 
+export default paymentRouter;

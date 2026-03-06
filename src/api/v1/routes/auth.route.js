@@ -8,7 +8,8 @@ import {
   forgotPasswordSchema,
   verifyOtpSchema,
   resetPasswordSchema,
-  resendOtpSchema
+  resendOtpSchema,
+  resendVerificationEmailSchema,
 } from "../validations/auth.validation.js";
 import { validationReq } from "../middlewares/validation.middleware.js";
 
@@ -90,6 +91,12 @@ authRouter.post(
   "/resend-otp",
   validationReq(resendOtpSchema),
   authController.resendOtp
+);
+
+authRouter.post(
+  "/resend-verification",
+  validationReq(resendVerificationEmailSchema),
+  authController.resendVerificationEmail,
 );
 
 

@@ -27,13 +27,14 @@ const MOMO_SECRET_KEY = process.env.MOMO_SECRET_KEY || "K951B6PE1waDMi640xX08PD3
 const MOMO_PARTNER_NAME = process.env.MOMO_PARTNER_NAME || "Thesis Ecommerce";
 const MOMO_STORE_ID = process.env.MOMO_STORE_ID || "ThesisStore";
 const MOMO_REQUEST_TYPE = process.env.MOMO_REQUEST_TYPE || "captureWallet";
-const APP_URL = process.env.APP_URL || "https://semitheatrically-unfascinating-mariam.ngrok-free.dev";
+const FRONTEND_APP_URL = process.env.APP_URL || "http://localhost:5501";
+const BACKEND_PUBLIC_URL = process.env.BACKEND_PUBLIC_URL || "http://localhost:3030";
 const MOMO_REDIRECT_URL =
   process.env.MOMO_REDIRECT_URL ||
-  "https://semitheatrically-unfascinating-mariam.ngrok-free.dev/payment/momo/redirect";
+  `${FRONTEND_APP_URL}/checkout/result`;
 const MOMO_IPN_URL =
   process.env.MOMO_IPN_URL ||
-  "https://semitheatrically-unfascinating-mariam.ngrok-free.dev/api/v1/payment/momo/ipn";
+  `${BACKEND_PUBLIC_URL}/api/v1/payment/momo/ipn`;
 const MOMO_PAYMENT_CODE = process.env.MOMO_PAYMENT_CODE || "";
 const MOMO_AMOUNT_MULTIPLIER = Number(process.env.MOMO_AMOUNT_MULTIPLIER || 1000);
 const MOMO_MIN_AMOUNT = 1000;
@@ -595,6 +596,57 @@ export class CheckoutService {
         result_code: momoPayment?.resultCode ?? null,
         message: momoPayment?.message ?? null,
       },
+    };
+  }
+
+  async getOrderStatus(userId, orderIdRaw) {
+    const orderId = Number(orderIdRaw);
+    if (!Number.isInteger(orderId) || orderId <= 0) {
+      throw new BadRequestError("order_id must be a positive integer");
+    }
+
+    const order = await this.orderRepository.findByIdAndCustomer(orderId, userId, {
+      attributes: [
+        "id",
+        "order_number",
+        "order_status",
+        "payment_status",
+        "payment_provider",
+        "payment_transaction_id",
+        "net_amount",
+        "updated_at",
+      ],
+    });
+
+    if (!order) {
+      throw new NotFoundError("Order not found");
+    }
+
+    const orderStatus = String(order.order_status || "pending");
+    const paymentStatus = String(order.payment_status || "pending");
+    const isFinal =
+      paymentStatus === "paid" ||
+      paymentStatus === "failed" ||
+      orderStatus === "cancelled";
+
+    let checkoutState = "pending";
+    if (paymentStatus === "paid") {
+      checkoutState = "success";
+    } else if (paymentStatus === "failed" || orderStatus === "cancelled") {
+      checkoutState = "failed";
+    }
+
+    return {
+      order_id: order.id,
+      order_number: order.order_number,
+      order_status: orderStatus,
+      payment_status: paymentStatus,
+      payment_provider: order.payment_provider || null,
+      payment_transaction_id: order.payment_transaction_id || null,
+      amount: Number(order.net_amount) || 0,
+      checkout_state: checkoutState,
+      is_final: isFinal,
+      updated_at: order.updated_at,
     };
   }
 

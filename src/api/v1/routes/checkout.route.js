@@ -32,4 +32,15 @@ checkoutRouter.post(
   authMiddleWare.verifyAT1,
   checkoutController.placeOrder,
 );
+
+/**
+ * @route   GET /api/v1/checkout/order-status/:orderId
+ * @desc    Poll order/payment status for current user
+ * @access  Private
+ */
+checkoutRouter.get(
+  "/order-status/:orderId",
+  authMiddleWare.verifyAT1,
+  checkoutController.getOrderStatus,
+);
 export default checkoutRouter;

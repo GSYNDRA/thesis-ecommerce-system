@@ -9,11 +9,14 @@ export class CheckoutController {
   previewCheckout = async (req, res, next) => {
     try {
       const userId = req.auth.userId;
-      const body = req.body;
+      const payload = {
+        ...(req.query || {}),
+        ...(req.body || {}),
+      };
 
       const previewData = await this.checkoutService.previewCheckout(
         userId,
-        body,
+        payload,
       );
 
       const successResponse = SuccessResponse.ok(
@@ -39,6 +42,19 @@ export class CheckoutController {
       );
 
       successResponse.send(res);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  getOrderStatus = async (req, res, next) => {
+    try {
+      const userId = req.auth.userId;
+      const orderId = req.params.orderId;
+
+      const result = await this.checkoutService.getOrderStatus(userId, orderId);
+
+      SuccessResponse.ok(result, "Order status fetched successfully").send(res);
     } catch (error) {
       next(error);
     }

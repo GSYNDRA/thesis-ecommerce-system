@@ -1,5 +1,6 @@
 import { randomUUID } from "crypto";
 import config from "../configs/config.sequelize.js";
+import { USER_ROLE } from "../constants/common.constant.js";
 import {
   BadRequestError,
   ForbiddenError,
@@ -163,11 +164,37 @@ export class ChatService {
     };
   }
 
+  async getSessionHistoryForActor({
+    sessionUuid,
+    actorUserId,
+    actorRoleId,
+    limit,
+    offset,
+  }) {
+    const session = await this.getSessionByUuid(sessionUuid);
+    const normalizedActorId = this.normalizeUserId(actorUserId, "actorUserId");
+    const isStaff = Number(actorRoleId) !== USER_ROLE.CUSTOMER;
+
+    if (!isStaff && session.user_id !== normalizedActorId) {
+      throw new ForbiddenError("You are not allowed to access this chat session");
+    }
+
+    if (isStaff && session.current_staff_id !== normalizedActorId) {
+      throw new ForbiddenError("You are not assigned to this chat session");
+    }
+
+    return this.getSessionHistory(session.session_uuid, { limit, offset });
+  }
+
   async requestHumanSupport({
     sessionUuid,
     reason = "Customer requested human support",
+    requesterUserId = null,
   }) {
-    const session = await this.getSessionByUuid(sessionUuid);
+    const session = requesterUserId
+      ? await this.assertCustomerOwnsSession(sessionUuid, requesterUserId)
+      : await this.getSessionByUuid(sessionUuid);
+
     if (session.status === "closed") {
       return {
         requested: false,
@@ -357,5 +384,23 @@ export class ChatService {
       sessionUuid: session.session_uuid,
     };
   }
-}
 
+  async closeSessionForActor({ sessionUuid, actorUserId, actorRoleId }) {
+    const session = await this.getSessionByUuid(sessionUuid);
+    const normalizedActorId = this.normalizeUserId(actorUserId, "actorUserId");
+    const isStaff = Number(actorRoleId) !== USER_ROLE.CUSTOMER;
+
+    if (!isStaff && session.user_id !== normalizedActorId) {
+      throw new ForbiddenError("You are not allowed to close this chat session");
+    }
+
+    if (isStaff && session.current_staff_id !== normalizedActorId) {
+      throw new ForbiddenError("You are not assigned to this chat session");
+    }
+
+    return this.closeSession({
+      sessionUuid: session.session_uuid,
+      closedBy: isStaff ? "staff" : "customer",
+    });
+  }
+}

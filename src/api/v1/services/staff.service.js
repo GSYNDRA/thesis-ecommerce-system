@@ -46,7 +46,8 @@ export class StaffService {
 
     await this.staffAvailabilityRepository.upsertStaffStatus(normalizedStaffId, {
       is_online: true,
-      is_available: true,
+      // Explicit opt-in: staff must manually set availability=true to receive chats.
+      is_available: false,
       last_heartbeat: now,
       updated_at: now,
     });
@@ -56,7 +57,7 @@ export class StaffService {
     return {
       staffId: normalizedStaffId,
       isOnline: true,
-      isAvailable: true,
+      isAvailable: false,
     };
   }
 
@@ -113,6 +114,74 @@ export class StaffService {
     };
   }
 
+  async scheduleStaleStaffOffline(staffIds = [], options = {}) {
+    const normalizedIds = (staffIds || [])
+      .map((id) => Number(id))
+      .filter((id) => Number.isInteger(id) && id > 0);
+
+    if (normalizedIds.length === 0) return;
+
+    const markOfflineTask = async () => {
+      const results = await Promise.allSettled(
+        normalizedIds.map((staffId) => this.handleStaffDisconnect(staffId)),
+      );
+      for (let i = 0; i < results.length; i += 1) {
+        const result = results[i];
+        if (result.status === "rejected") {
+          console.warn(
+            `[StaffService] Failed to handle stale staff ${normalizedIds[i]} disconnect:`,
+            result.reason?.message || result.reason,
+          );
+        }
+      }
+    };
+
+    if (options?.transaction) {
+      // Avoid blocking the current transaction on stale cleanup writes.
+      setImmediate(() => {
+        markOfflineTask().catch((error) => {
+          console.warn(
+            "[StaffService] Stale staff cleanup failed after transaction:",
+            error?.message || error,
+          );
+        });
+      });
+      return;
+    }
+
+    await markOfflineTask();
+  }
+
+  async filterCandidatesByHeartbeat(candidates = [], options = {}) {
+    const healthy = [];
+    const staleIds = [];
+
+    for (const candidate of candidates || []) {
+      const staffId = Number(candidate?.staff_id);
+      if (!Number.isInteger(staffId) || staffId <= 0) continue;
+
+      try {
+        const ttl = await this.chatRedisService.getStaffHeartbeatTtl(staffId);
+        if (Number(ttl) > 0) {
+          healthy.push(candidate);
+        } else {
+          staleIds.push(staffId);
+        }
+      } catch (error) {
+        console.warn(
+          `[StaffService] Heartbeat TTL check failed for ${staffId}:`,
+          error?.message || error,
+        );
+      }
+    }
+
+    if (staleIds.length > 0) {
+      await this.scheduleStaleStaffOffline(staleIds, options);
+    }
+
+    return healthy;
+  }
+
   async pickAvailableStaff({ excludeStaffIds = [] } = {}, options = {}) {
     const normalizedExcludeIds = excludeStaffIds
       .map((id) => Number(id))
@@ -139,7 +208,13 @@ export class StaffService {
       );
 
       if (filtered.length > 0) {
-        return filtered[0];
+        const healthyCandidates = await this.filterCandidatesByHeartbeat(
+          filtered,
+          options,
+        );
+        if (healthyCandidates.length > 0) {
+          return healthyCandidates[0];
+        }
       }
     } catch (error) {
       console.warn(
@@ -148,7 +223,11 @@ export class StaffService {
       );
     }
 
-    return dbCandidates[0];
+    const fallbackHealthyCandidates = await this.filterCandidatesByHeartbeat(
+      dbCandidates,
+      options,
+    );
+    return fallbackHealthyCandidates[0] || null;
   }
 
   async assignSessionToStaff({
@@ -252,6 +331,87 @@ export class StaffService {
         alreadyAssigned: false,
         sessionUuid: normalizedSessionUuid,
         staffId: targetStaffId,
+        transferRequestId: transfer.id,
+      };
+    } catch (error) {
+      await tx.rollback();
+      throw error;
+    }
+  }
+
+  async assignPendingSessionToStaff(
+    staffId,
+    { reason = "Staff became available" } = {},
+  ) {
+    const normalizedStaffId = this.normalizeStaffId(staffId);
+    const sequelize = this.chatSessionRepository.sequelize;
+    const tx = await sequelize.transaction();
+
+    try {
+      const staffAvailability = await this.staffAvailabilityRepository.findByStaffId(
+        normalizedStaffId,
+        { transaction: tx, lock: tx.LOCK.UPDATE },
+      );
+
+      if (
+        !staffAvailability ||
+        !staffAvailability.is_online ||
+        !staffAvailability.is_available
+      ) {
+        await tx.rollback();
+        return { assigned: false, reason: "STAFF_NOT_AVAILABLE" };
+      }
+
+      if (Number(staffAvailability.current_chats || 0) >= config.chat.maxConcurrentPerStaff) {
+        await tx.rollback();
+        return { assigned: false, reason: "STAFF_MAX_CONCURRENT_REACHED" };
+      }
+
+      const session = await this.chatSessionRepository.findOldestPendingWithoutStaff({
+        transaction: tx,
+        lock: tx.LOCK.UPDATE,
+      });
+
+      if (!session) {
+        await tx.rollback();
+        return { assigned: false, reason: "NO_PENDING_SESSIONS" };
+      }
+
+      await this.chatSessionRepository.assignStaff(session.session_uuid, normalizedStaffId, {
+        transaction: tx,
+      });
+      await this.staffAvailabilityRepository.incrementCurrentChats(normalizedStaffId, {
+        transaction: tx,
+      });
+
+      const transfer = await this.chatTransferRepository.createPendingTransfer(
+        {
+          session_id: session.id,
+          from_staff_id: session.current_staff_id || null,
+          to_staff_id: normalizedStaffId,
+          reason,
+          status: "pending",
+        },
+        { transaction: tx },
+      );
+
+      await this.chatTransferRepository.resolveTransfer(transfer.id, "accepted", {
+        transaction: tx,
+      });
+
+      await tx.commit();
+
+      await this.safeSetChatState(session.session_uuid, {
+        mode: "human",
+        status: "active",
+        staffId: normalizedStaffId,
+        updatedAt: new Date().toISOString(),
+      });
+
+      return {
+        assigned: true,
+        sessionUuid: session.session_uuid,
+        staffId: normalizedStaffId,
         transferRequestId: transfer.id,
       };
     } catch (error) {
@@ -425,6 +585,37 @@ export class StaffService {
   async getOpenSessionsByStaff(staffId, options = {}) {
     const normalizedStaffId = this.normalizeStaffId(staffId);
     return this.chatSessionRepository.findOpenByStaffId(normalizedStaffId, options);
+  }
+
+  async getStaffWorkload(staffId, { sessionLimit = 20 } = {}) {
+    const normalizedStaffId = this.normalizeStaffId(staffId);
+    const safeLimit =
+      Number.isInteger(sessionLimit) && sessionLimit > 0 ? sessionLimit : 20;
+
+    const [availability, sessions] = await Promise.all([
+      this.staffAvailabilityRepository.findByStaffId(normalizedStaffId),
+      this.getOpenSessionsByStaff(normalizedStaffId, { limit: safeLimit }),
+    ]);
+
+    return {
+      staffId: normalizedStaffId,
+      isOnline: Boolean(availability?.is_online),
+      isAvailable: Boolean(availability?.is_available),
+      currentChats: Number(availability?.current_chats || 0),
+      maxConcurrentChats: config.chat.maxConcurrentPerStaff,
+      lastHeartbeat: availability?.last_heartbeat
+        ? new Date(availability.last_heartbeat).toISOString()
+        : null,
+      sessions: (sessions || []).map((session) => ({
+        sessionUuid: session.session_uuid,
+        userId: session.user_id,
+        mode: session.mode,
+        status: session.status,
+        updatedAt: session.updated_at || session.updatedAt
+          ? new Date(session.updated_at || session.updatedAt).toISOString()
+          : null,
+      })),
+    };
   }
 
   async handleStaffDisconnect(staffId) {

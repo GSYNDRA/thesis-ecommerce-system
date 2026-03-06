@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Chat Demo Test Client</title>
+    <link rel="stylesheet" href="./styles.css" />
+    <script src="http://localhost:3030/socket.io/socket.io.js"></script>
+  </head>
+  <body>
+    <main class="wrapper">
+      <h1>Chat Demo Test Client</h1>
+      <p class="subtitle">
+        Standalone frontend tester for HTTP + WebSocket chat flow.
+      </p>
+
+      <section class="card">
+        <h2>Connection</h2>
+        <div class="row">
+          <label for="backendUrl">Backend URL</label>
+          <input id="backendUrl" value="http://localhost:3030" />
+        </div>
+        <div class="row">
+          <label for="accessToken">Access Token</label>
+          <textarea
+            id="accessToken"
+            placeholder="Paste access token (with or without Bearer prefix)"
+          ></textarea>
+        </div>
+        <div class="row">
+          <label for="sessionUuid">Session UUID</label>
+          <input id="sessionUuid" placeholder="Auto-filled after init/HTTP active" />
+        </div>
+        <div class="actions">
+          <button id="connectBtn" class="primary">Connect Socket</button>
+          <button id="disconnectBtn">Disconnect Socket</button>
+          <button id="heartbeatBtn">Send Heartbeat</button>
+          <button id="clearLogsBtn">Clear Logs</button>
+        </div>
+        <div id="statusBox" class="status">Socket status: disconnected</div>
+      </section>
+
+      <section class="grid">
+        <div class="card">
+          <h2>WebSocket Events</h2>
+          <div class="row">
+            <label for="messageInput">Message</label>
+            <textarea
+              id="messageInput"
+              placeholder="Type customer/staff message..."
+            ></textarea>
+          </div>
+          <div class="row">
+            <label for="reasonInput">Human request reason</label>
+            <input id="reasonInput" value="Need human support" />
+          </div>
+          <div class="actions">
+            <button id="wsInitBtn" class="primary">chat:init</button>
+            <button id="wsSendBtn">chat:send</button>
+            <button id="wsRequestHumanBtn">chat:request_human</button>
+            <button id="wsCloseBtn" class="danger">chat:close</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>HTTP Endpoints</h2>
+          <small>Base: /api/v1/chat</small>
+          <div class="actions top-gap">
+            <button id="httpActiveBtn" class="primary">GET session/active</button>
+            <button id="httpHistoryBtn">GET history</button>
+            <button id="httpRequestHumanBtn">POST request-human</button>
+            <button id="httpCloseBtn" class="danger">POST close</button>
+            <button id="staffAvailableBtn">POST staff available=true</button>
+            <button id="staffBusyBtn">POST staff available=false</button>
+            <button id="staffWorkloadBtn">GET staff/workload</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Logs</h2>
+        <pre id="logBox" class="logs"></pre>
+      </section>
+    </main>
+
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>
+

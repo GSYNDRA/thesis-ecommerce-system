@@ -212,6 +212,34 @@ export class AuthService {
     await EmailServices.sendVerifyEmail(user.email, verifyUrl);
   }
 
+  async resendVerificationEmail(email) {
+    if (!email) throw new BadRequestError("Email is required");
+
+    const normalizedEmail = email.toLowerCase().trim();
+    const user = await this.userRepository.findByEmail(normalizedEmail);
+
+    // Enumeration-safe generic response by default.
+    const genericResponse = {
+      message:
+        "If the email exists and is not verified, a verification email has been sent.",
+    };
+
+    if (!user) return genericResponse;
+
+    if (["deleted", "suspended", "inactive"].includes(user.status)) {
+      return genericResponse;
+    }
+
+    if (user.is_email_verified) {
+      return {
+        message: "Email is already verified. Please sign in.",
+      };
+    }
+
+    await this.resendVerification(user);
+    return genericResponse;
+  }
+
   // inside AuthService
   async verifyEmail(rawToken, deviceInfo = {}) {
     if (!rawToken) throw new BadRequestError("Verification token is required");

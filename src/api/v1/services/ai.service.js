@@ -14,6 +14,21 @@ const HUMAN_REQUEST_PATTERNS = [
   /live support/i,
 ];
 
+const LOW_QUALITY_RESPONSE_PATTERNS = [
+  /unable to assist/i,
+  /cannot assist/i,
+  /can't assist/i,
+  /please try again later/i,
+  /visit our support page/i,
+  /unable to help with your request/i,
+];
+
+const TRANSFER_MESSAGE =
+  "I will transfer you to a human support agent right away.";
+
+const RETRY_INSTRUCTION =
+  "Rewrite your answer to be practical for e-commerce support. Do not refuse generically. If details are missing, ask one short follow-up question.";
+
 export class AIService {
   constructor() {
     this.provider = config.ai.provider;
@@ -35,6 +50,13 @@ export class AIService {
     const text = String(message || "").trim();
     if (!text) return false;
     return HUMAN_REQUEST_PATTERNS.some((pattern) => pattern.test(text));
+  }
+
+  isLowQualityResponse(content = "") {
+    const text = String(content || "").trim();
+    if (!text) return true;
+
+    return LOW_QUALITY_RESPONSE_PATTERNS.some((pattern) => pattern.test(text));
   }
 
   buildSystemPrompt() {
@@ -125,6 +147,36 @@ export class AIService {
     return content;
   }
 
+  async callOpenRouterWithSingleRetry(messages) {
+    const content = await this.callOpenRouter(messages);
+    if (!this.isLowQualityResponse(content)) {
+      return {
+        content,
+        retryUsed: false,
+      };
+    }
+
+    const retryMessages = [
+      ...messages,
+      { role: "system", content: RETRY_INSTRUCTION },
+    ];
+    const retriedContent = await this.callOpenRouter(retryMessages);
+
+    if (this.isLowQualityResponse(retriedContent)) {
+      return {
+        content: TRANSFER_MESSAGE,
+        retryUsed: true,
+        forceTransfer: true,
+      };
+    }
+
+    return {
+      content: retriedContent,
+      retryUsed: true,
+      forceTransfer: false,
+    };
+  }
+
   async callOpenRouterStream(messages, onToken) {
     if (!this.apiKey) {
       throw new Error("OpenRouter API key is missing");
@@ -180,7 +232,7 @@ export class AIService {
   async generateReply({ userMessage, history = [], stream = false, onToken = null }) {
     if (this.detectExplicitHumanRequest(userMessage)) {
       return {
-        content: "I will transfer you to a human support agent right away.",
+        content: TRANSFER_MESSAGE,
         shouldTransferToStaff: true,
         transferReason: "Customer explicitly requested human support",
       };
@@ -196,6 +248,17 @@ export class AIService {
       if (stream && typeof onToken === "function") {
         try {
           const streamed = await this.callOpenRouterStream(messages, onToken);
+
+          if (this.isLowQualityResponse(streamed.content)) {
+            return {
+              content: TRANSFER_MESSAGE,
+              shouldTransferToStaff: true,
+              transferReason:
+                "AI generated low-quality generic response in stream mode",
+              streamMode: "stream_guarded_transfer",
+            };
+          }
+
           return {
             content: streamed.content,
             shouldTransferToStaff: false,
@@ -207,15 +270,19 @@ export class AIService {
 
           // Fallback to non-stream only when stream did not emit any token.
           if (emittedTokens === 0) {
-            const content = await this.callOpenRouter(messages);
+            const fallback = await this.callOpenRouterWithSingleRetry(messages);
             if (typeof onToken === "function") {
-              await onToken(content);
+              await onToken(fallback.content);
             }
             return {
-              content,
-              shouldTransferToStaff: false,
-              transferReason: null,
-              streamMode: "fallback_non_stream",
+              content: fallback.content,
+              shouldTransferToStaff: Boolean(fallback.forceTransfer),
+              transferReason: fallback.forceTransfer
+                ? "AI generated low-quality generic response after retry"
+                : null,
+              streamMode: fallback.retryUsed
+                ? "fallback_non_stream_retry"
+                : "fallback_non_stream",
             };
           }
 
@@ -223,18 +290,19 @@ export class AIService {
         }
       }
 
-      const content = await this.callOpenRouter(messages);
+      const nonStream = await this.callOpenRouterWithSingleRetry(messages);
 
       return {
-        content,
-        shouldTransferToStaff: false,
-        transferReason: null,
-        streamMode: "non_stream",
+        content: nonStream.content,
+        shouldTransferToStaff: Boolean(nonStream.forceTransfer),
+        transferReason: nonStream.forceTransfer
+          ? "AI generated low-quality generic response after retry"
+          : null,
+        streamMode: nonStream.retryUsed ? "non_stream_retry" : "non_stream",
       };
     } catch (error) {
       return {
-        content:
-          "I am having trouble processing your request right now. I will transfer you to a human support agent to continue.",
+        content: `I am having trouble processing your request right now. ${TRANSFER_MESSAGE}`,
         shouldTransferToStaff: true,
         transferReason: `AI provider error: ${error?.message || "unknown_error"}`,
       };

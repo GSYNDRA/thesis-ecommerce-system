@@ -77,7 +77,7 @@ const envSchema = z.object({
   CHAT_REDIS_PREFIX: z.string().min(1).default('chat'),
 
   // ===== AI =====
-  AI_PROVIDER: z.enum(['openai', 'openrouter']).default('openai'),
+  AI_PROVIDER: z.enum(['openai', 'openrouter']).default('openrouter'),
   OPENAI_API_KEY: z.string().default(''),
   OPENAI_MODEL: z.string().default('gpt-4o-mini'),
   OPENAI_MAX_TOKENS: z.coerce.number().int().positive().default(300),
