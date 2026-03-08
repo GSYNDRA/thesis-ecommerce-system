@@ -11,6 +11,11 @@ import ChatMessageRepository from "../reponsitories/chatMessage.repository.js";
 import { AIService } from "./ai.service.js";
 import { StaffService } from "./staff.service.js";
 import { ChatRedisService } from "./chatRedis.service.js";
+import { ChatIntentService } from "./chatIntent.service.js";
+import { ChatProductToolService } from "./chatProductTool.service.js";
+
+const HARD_HANDOFF_NOTICE =
+  "I'm transferring you to a human support specialist for this request.";
 
 export class ChatService {
   constructor() {
@@ -19,6 +24,8 @@ export class ChatService {
     this.aiService = new AIService();
     this.staffService = new StaffService();
     this.chatRedisService = new ChatRedisService();
+    this.chatIntentService = new ChatIntentService();
+    this.chatProductToolService = new ChatProductToolService();
   }
 
   normalizeUserId(userId, fieldName = "userId") {
@@ -237,6 +244,7 @@ export class ChatService {
     content,
     stream = false,
     onToken = null,
+    onCustomerMessage = null,
   }) {
     const session = await this.assertCustomerOwnsSession(sessionUuid, userId);
     if (session.status === "closed") {
@@ -250,6 +258,17 @@ export class ChatService {
       content,
     });
 
+    if (typeof onCustomerMessage === "function") {
+      try {
+        await onCustomerMessage(customerMessage, session.session_uuid);
+      } catch (error) {
+        console.warn(
+          `[ChatService] Failed to emit customer message early for ${session.session_uuid}:`,
+          error?.message || error,
+        );
+      }
+    }
+
     if (session.mode === "human") {
       return {
         mode: "human",
@@ -260,6 +279,91 @@ export class ChatService {
       };
     }
 
+    const normalizedUserMessage = String(content || "");
+    const routedIntent = this.chatIntentService.detectIntent(normalizedUserMessage);
+
+    if (routedIntent?.route === "hard_handoff") {
+      const transferReason = this.chatIntentService.buildAutoHandoffReason(
+        routedIntent.intent,
+      );
+      const handoffNoticeMessage = await this.createSystemMessage(
+        session.session_uuid,
+        HARD_HANDOFF_NOTICE,
+      );
+      const transfer = await this.requestHumanSupport({
+        sessionUuid: session.session_uuid,
+        reason: transferReason,
+      });
+
+      return {
+        mode: "ai",
+        sessionUuid: session.session_uuid,
+        customerMessage,
+        aiMessage: handoffNoticeMessage,
+        transfer,
+        aiMeta: {
+          transferReason,
+          streamMode: null,
+          intent: routedIntent.intent,
+          route: routedIntent.route,
+        },
+      };
+    }
+
+    if (routedIntent?.route === "product_tool") {
+      try {
+        const toolResult = await this.chatProductToolService.handleIntent({
+          intent: routedIntent.intent,
+          message: normalizedUserMessage,
+        });
+
+        if (toolResult?.handled && toolResult?.content) {
+          const toolMessage = await this.createMessage({
+            sessionId: session.id,
+            senderType: "ai",
+            senderId: null,
+            content: toolResult.content,
+          });
+
+          return {
+            mode: "ai",
+            sessionUuid: session.session_uuid,
+            customerMessage,
+            aiMessage: toolMessage,
+            transfer: null,
+            aiMeta: {
+              transferReason: null,
+              streamMode: "product_tool",
+              intent: routedIntent.intent,
+              route: routedIntent.route,
+            },
+          };
+        }
+      } catch (error) {
+        const toolErrorMessage = await this.createMessage({
+          sessionId: session.id,
+          senderType: "ai",
+          senderId: null,
+          content:
+            "I couldn't retrieve product details right now. Please try again with the product name or slug.",
+        });
+
+        return {
+          mode: "ai",
+          sessionUuid: session.session_uuid,
+          customerMessage,
+          aiMessage: toolErrorMessage,
+          transfer: null,
+          aiMeta: {
+            transferReason: `PRODUCT_TOOL_ERROR:${error?.message || "unknown_error"}`,
+            streamMode: "product_tool_error",
+            intent: routedIntent.intent,
+            route: routedIntent.route,
+          },
+        };
+      }
+    }
+
     const historyRows = await this.chatMessageRepository.getSessionHistory(
       session.id,
       { limit: config.chat.historyLimit, offset: 0 },
@@ -267,7 +371,7 @@ export class ChatService {
     const historyForAI = historyRows.filter((row) => row.id !== customerMessage.id);
 
     const aiReply = await this.aiService.generateReply({
-      userMessage: String(content || ""),
+      userMessage: normalizedUserMessage,
       history: historyForAI,
       stream,
       onToken,

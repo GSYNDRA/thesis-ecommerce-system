@@ -2,6 +2,7 @@ import redisClient from "../database/init.redis.js";
 import config from "../configs/config.sequelize.js";
 import { ChatRedisService } from "./chatRedis.service.js";
 import { ChatService } from "./chat.service.js";
+import { StaffService } from "./staff.service.js";
 
 const EXPIRED_EVENT_PATTERN = "__keyevent@0__:expired";
 
@@ -16,6 +17,7 @@ class StaffHeartbeatExpirySubscriber {
     this.started = false;
     this.chatRedisService = new ChatRedisService();
     this.chatService = new ChatService();
+    this.staffService = new StaffService();
     const prefix = escapeRegex(config.chat.redisPrefix);
     this.heartbeatKeyRegex = new RegExp(`^${prefix}:staff:(\\d+):hb$`);
   }
@@ -111,12 +113,41 @@ class StaffHeartbeatExpirySubscriber {
     const ttl = await this.chatRedisService.getStaffHeartbeatTtl(staffId);
     if (Number(ttl) > 0) return;
 
+    // If staff still has an active socket session, this expiration is likely a timer/throttle race.
+    // Renew heartbeat instead of forcing offline + reassignment.
+    if (await this.hasActiveStaffSocket(staffId)) {
+      await this.staffService.heartbeat(staffId);
+      console.log(
+        `[StaffHeartbeatExpirySubscriber] Ignored heartbeat expiration for staff ${staffId} because active socket still exists`,
+      );
+      return;
+    }
+
     const result = await this.chatService.handleStaffDisconnect(staffId);
     this.emitReassignmentEvents(result);
 
     console.log(
       `[StaffHeartbeatExpirySubscriber] Staff ${staffId} marked offline due to heartbeat expiration`,
     );
+  }
+
+  async hasActiveStaffSocket(staffId) {
+    const io = globalThis.io;
+    if (!io) return false;
+
+    try {
+      const sockets = await io.in(`user:${staffId}`).fetchSockets();
+      return sockets.some(
+        (socket) =>
+          Boolean(socket?.user?.isStaff) && Number(socket?.user?.id) === Number(staffId),
+      );
+    } catch (error) {
+      console.warn(
+        `[StaffHeartbeatExpirySubscriber] Failed to check active socket for staff ${staffId}:`,
+        error?.message || error,
+      );
+      return false;
+    }
   }
 
   emitReassignmentEvents(result) {
@@ -151,4 +182,3 @@ class StaffHeartbeatExpirySubscriber {
 
 const staffHeartbeatExpirySubscriber = new StaffHeartbeatExpirySubscriber();
 export default staffHeartbeatExpirySubscriber;
-

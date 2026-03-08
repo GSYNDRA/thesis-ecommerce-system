@@ -24,6 +24,16 @@
             "date": 1772764449900,
             "name": "C:\\Users\\hoang\\OneDrive\\Documents\\TERM 8\\THESIS PROJECT\\Ecommerce\\thesis-ecommerce-system\\src\\api\\v1\\logs\\application-2026-03-06.error.log",
             "hash": "024050b7ee74bda84da36a25d45122c0022dc8058b39a8541b011666ebd478a3"
+        },
+        {
+            "date": 1772901287974,
+            "name": "C:\\Users\\hoang\\OneDrive\\Documents\\TERM 8\\THESIS PROJECT\\Ecommerce\\thesis-ecommerce-system\\src\\api\\v1\\logs\\application-2026-03-07.error.log",
+            "hash": "c69efd5003817fd5549101e24dfa9da7883695106751cf7459c11ca09a4e2df8"
+        },
+        {
+            "date": 1772903021826,
+            "name": "C:\\Users\\hoang\\OneDrive\\Documents\\TERM 8\\THESIS PROJECT\\Ecommerce\\thesis-ecommerce-system\\src\\api\\v1\\logs\\application-2026-03-08.error.log",
+            "hash": "0c8cfd28621d38ac1d68bfa290aecc9ff4563177398461bd16c4ab032bf41106"
         }
     ],
     "hashType": "sha256"

@@ -15,6 +15,10 @@ export interface AuthUser {
   id: number;
   email: string;
   role?: number | string;
+  role_id?: number | string;
+  roleId?: number | string;
+  role_name?: string;
+  roleName?: string;
   is_email_verified?: boolean;
 }
 

@@ -2,6 +2,7 @@ import { emitAck, emitError } from "../utils/socketEmit.util.js";
 
 const AUTO_ASSIGN_CONNECTED_MESSAGE =
   "You have been connected to a human support agent.";
+const DISCONNECT_GRACE_MS = 2000;
 
 export async function tryAutoAssignPendingSession({
   io,
@@ -119,6 +120,17 @@ export async function handleStaffSocketDisconnect({ io, chatService, socket }) {
   if (!socket.user?.isStaff) return;
 
   try {
+    // Give a short grace window for fast reconnects.
+    await new Promise((resolve) => setTimeout(resolve, DISCONNECT_GRACE_MS));
+
+    const staffId = Number(socket.user.id);
+    if (Number.isInteger(staffId) && staffId > 0) {
+      const stillConnected = await hasAnyActiveStaffSocket(io, staffId);
+      if (stillConnected) {
+        return;
+      }
+    }
+
     const result = await chatService.handleStaffDisconnect(socket.user.id);
     emitStaffReassignmentEvents({ io, result });
   } catch (error) {
@@ -126,5 +138,22 @@ export async function handleStaffSocketDisconnect({ io, chatService, socket }) {
       `[Socket] Staff disconnect handling failed for ${socket.user.id}:`,
       error?.message || error,
     );
+  }
+}
+
+async function hasAnyActiveStaffSocket(io, staffId) {
+  try {
+    const sockets = await io.in(`user:${staffId}`).fetchSockets();
+    return sockets.some(
+      (staffSocket) =>
+        Boolean(staffSocket?.user?.isStaff) &&
+        Number(staffSocket?.user?.id) === Number(staffId),
+    );
+  } catch (error) {
+    console.warn(
+      `[Socket] Failed to check active sockets for staff ${staffId}:`,
+      error?.message || error,
+    );
+    return false;
   }
 }

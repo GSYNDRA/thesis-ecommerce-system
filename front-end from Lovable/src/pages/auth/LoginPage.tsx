@@ -8,6 +8,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { AuthLayout, FieldError, InlineError, InlineSuccess } from "@/components/auth/AuthLayout";
 import { useAuth } from "@/contexts/AuthContext";
 import { getSafeReturnUrl } from "@/lib/auth/navigation";
+import { getChatRoleFromSession, type ChatRole } from "@/lib/auth/roles";
 import { ApiError } from "@/lib/api/client";
 import { toast } from "sonner";
 
@@ -15,6 +16,36 @@ type FormState = {
   email: string;
   password: string;
 };
+
+function getTargetPathname(target: string): string {
+  try {
+    return new URL(target, "http://localhost").pathname;
+  } catch {
+    return "/";
+  }
+}
+
+function canAccessTargetByRole(role: ChatRole | null, target: string): boolean {
+  if (!role) return true;
+
+  const pathname = getTargetPathname(target);
+  if (pathname.startsWith("/staff")) return role === "staff";
+  if (pathname.startsWith("/support/chat")) return role === "customer";
+  if (pathname.startsWith("/auth/")) return false;
+  return true;
+}
+
+function getDefaultTargetByRole(role: ChatRole | null): string {
+  if (role === "staff") return "/";
+  return "/";
+}
+
+function resolvePostLoginTarget(returnUrl: string, role: ChatRole | null): string {
+  if (returnUrl !== "/" && canAccessTargetByRole(role, returnUrl)) {
+    return returnUrl;
+  }
+  return getDefaultTargetByRole(role);
+}
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -49,12 +80,14 @@ export default function LoginPage() {
     setNeedsEmailVerification(false);
 
     try {
-      await login({
+      const session = await login({
         email: form.email.trim(),
         password: form.password,
       });
+      const role = getChatRoleFromSession(session.user, session.accessToken);
+      const nextTarget = resolvePostLoginTarget(returnUrl, role);
       toast.success("Login successful");
-      navigate(returnUrl, { replace: true });
+      navigate(nextTarget, { replace: true });
     } catch (err) {
       if (err instanceof ApiError) {
         const message = err.message || "Login failed";

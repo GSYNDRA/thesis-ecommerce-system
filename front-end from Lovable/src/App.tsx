@@ -16,12 +16,22 @@ import VerifyEmailPage from "@/pages/auth/VerifyEmailPage";
 import ForgotPasswordPage from "@/pages/auth/ForgotPasswordPage";
 import VerifyOtpPage from "@/pages/auth/VerifyOtpPage";
 import ResetPasswordPage from "@/pages/auth/ResetPasswordPage";
-import { GuestOnlyRoute, ProtectedRoute } from "@/components/auth/RouteGuards";
+import {
+  CustomerOnlyRoute,
+  GuestOnlyRoute,
+  ProtectedRoute,
+  StaffOnlyRoute,
+} from "@/components/auth/RouteGuards";
 import ProductListPage from "@/pages/products/ProductListPage";
 import ProductDetailPage from "@/pages/products/ProductDetailPage";
 import CartPage from "@/pages/commerce/CartPage";
 import CheckoutPage from "@/pages/commerce/CheckoutPage";
 import CheckoutResultPage from "@/pages/commerce/CheckoutResultPage";
+import ForbiddenPage from "@/pages/ForbiddenPage";
+import SupportChatPage from "@/pages/support/SupportChatPage";
+import StaffSupportDashboardPage from "@/pages/support/StaffSupportDashboardPage";
+import StaffConversationRoomPage from "@/pages/support/StaffConversationRoomPage";
+import { GlobalChatLauncher } from "@/components/chat/GlobalChatLauncher";
 
 const queryClient = new QueryClient();
 
@@ -118,6 +128,39 @@ const App = () => (
             />
             <Route path="/checkout/result" element={<CheckoutResultPage />} />
             <Route
+              path="/support/chat"
+              element={
+                <CustomerOnlyRoute>
+                  <SupportChatPage />
+                </CustomerOnlyRoute>
+              }
+            />
+            <Route
+              path="/staff/support"
+              element={
+                <StaffOnlyRoute>
+                  <StaffSupportDashboardPage />
+                </StaffOnlyRoute>
+              }
+            />
+            <Route
+              path="/staff/support/room/:sessionUuid"
+              element={
+                <StaffOnlyRoute>
+                  <StaffConversationRoomPage />
+                </StaffOnlyRoute>
+              }
+            />
+            <Route
+              path="/staff/*"
+              element={
+                <StaffOnlyRoute>
+                  <NotFound />
+                </StaffOnlyRoute>
+              }
+            />
+            <Route path="/403" element={<ForbiddenPage />} />
+            <Route
               path="/commerce-showcase"
               element={
                 <ProtectedRoute>
@@ -135,6 +178,7 @@ const App = () => (
             />
             <Route path="*" element={<NotFound />} />
           </Routes>
+          <GlobalChatLauncher />
         </BrowserRouter>
       </TooltipProvider>
     </AuthProvider>

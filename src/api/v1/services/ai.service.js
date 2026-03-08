@@ -3,9 +3,6 @@ import config from "../configs/config.sequelize.js";
 import { buildSupportSystemPrompt } from "../utils/chatPrompt.util.js";
 
 const HUMAN_REQUEST_PATTERNS = [
-  /nhan vien/i,
-  /nguoi that/i,
-  /ho tro vien/i,
   /human support/i,
   /human/i,
   /agent/i,
@@ -215,7 +212,16 @@ export class AIService {
         }
       }
     } catch (error) {
+      if (emittedTokens > 0 && content.trim()) {
+        return {
+          content: content.trim(),
+          emittedTokens,
+          partial: true,
+          errorMessage: error?.message || "stream_interrupted",
+        };
+      }
       error.emittedTokens = emittedTokens;
+      error.partialContent = content.trim();
       throw error;
     }
 
@@ -226,6 +232,8 @@ export class AIService {
     return {
       content: content.trim(),
       emittedTokens,
+      partial: false,
+      errorMessage: null,
     };
   }
 
@@ -249,6 +257,29 @@ export class AIService {
         try {
           const streamed = await this.callOpenRouterStream(messages, onToken);
 
+          if (streamed.partial) {
+            try {
+              const fallback = await this.callOpenRouterWithSingleRetry(messages);
+              return {
+                content: fallback.content,
+                shouldTransferToStaff: Boolean(fallback.forceTransfer),
+                transferReason: fallback.forceTransfer
+                  ? "AI generated low-quality generic response after retry"
+                  : null,
+                streamMode: fallback.retryUsed
+                  ? "stream_partial_fallback_non_stream_retry"
+                  : "stream_partial_fallback_non_stream",
+              };
+            } catch {
+              return {
+                content: streamed.content,
+                shouldTransferToStaff: false,
+                transferReason: null,
+                streamMode: "stream_partial",
+              };
+            }
+          }
+
           if (this.isLowQualityResponse(streamed.content)) {
             return {
               content: TRANSFER_MESSAGE,
@@ -267,11 +298,10 @@ export class AIService {
           };
         } catch (streamError) {
           const emittedTokens = Number(streamError?.emittedTokens || 0);
-
-          // Fallback to non-stream only when stream did not emit any token.
-          if (emittedTokens === 0) {
+          const partialContent = String(streamError?.partialContent || "").trim();
+          try {
             const fallback = await this.callOpenRouterWithSingleRetry(messages);
-            if (typeof onToken === "function") {
+            if (typeof onToken === "function" && emittedTokens === 0) {
               await onToken(fallback.content);
             }
             return {
@@ -280,10 +310,24 @@ export class AIService {
               transferReason: fallback.forceTransfer
                 ? "AI generated low-quality generic response after retry"
                 : null,
-              streamMode: fallback.retryUsed
-                ? "fallback_non_stream_retry"
-                : "fallback_non_stream",
+              streamMode:
+                emittedTokens === 0
+                  ? fallback.retryUsed
+                    ? "fallback_non_stream_retry"
+                    : "fallback_non_stream"
+                  : fallback.retryUsed
+                  ? "stream_error_fallback_non_stream_retry"
+                  : "stream_error_fallback_non_stream",
             };
+          } catch {
+            if (partialContent) {
+              return {
+                content: partialContent,
+                shouldTransferToStaff: false,
+                transferReason: null,
+                streamMode: "stream_partial_error",
+              };
+            }
           }
 
           throw streamError;
@@ -309,5 +353,3 @@ export class AIService {
     }
   }
 }
-
-

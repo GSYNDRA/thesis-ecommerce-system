@@ -97,7 +97,13 @@ export function registerChatSocketHandlers({ io, socket, chatService }) {
         sessionUuid,
         userId: socket.user.id,
         content,
-        stream: true,
+        stream: false,
+        onCustomerMessage: async (customerMessage, targetSessionUuid) => {
+          io.to(room).emit(
+            "chat:new_message",
+            buildMessagePayload(customerMessage, targetSessionUuid),
+          );
+        },
         onToken: async (token) => {
           io.to(room).emit("chat:ai_token", {
             sessionUuid,
@@ -106,11 +112,6 @@ export function registerChatSocketHandlers({ io, socket, chatService }) {
           });
         },
       });
-
-      io.to(room).emit(
-        "chat:new_message",
-        buildMessagePayload(result.customerMessage, sessionUuid),
-      );
 
       if (result.aiMessage) {
         io.to(room).emit(

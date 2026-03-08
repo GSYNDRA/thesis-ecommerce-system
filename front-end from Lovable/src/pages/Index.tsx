@@ -44,7 +44,7 @@ const sections = [
 ];
 
 const Index = () => {
-  const { user, logout } = useAuth();
+  const { user, isStaff, logout } = useAuth();
   const [loggingOut, setLoggingOut] = useState(false);
 
   async function onLogout() {
@@ -70,6 +70,13 @@ const Index = () => {
             </div>
             <div className="shrink-0 space-y-2 text-right">
               <p className="text-xs text-muted-foreground">{user?.email || "Signed in"}</p>
+              {isStaff ? (
+                <div>
+                  <Button asChild variant="secondary" size="sm" className="w-full">
+                    <Link to="/staff/support">Open Staff Dashboard</Link>
+                  </Button>
+                </div>
+              ) : null}
               <Button variant="outline" size="sm" onClick={onLogout} disabled={loggingOut}>
                 {loggingOut ? "Signing out..." : "Sign Out"}
               </Button>

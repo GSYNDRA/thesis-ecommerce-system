@@ -16,10 +16,14 @@ import {
   setSession,
   type AuthSession,
 } from "@/lib/auth/session";
+import { getChatRoleFromSession, type ChatRole } from "@/lib/auth/roles";
 
 interface AuthContextValue {
   session: AuthSession | null;
   user: AuthUser | null;
+  role: ChatRole | null;
+  isCustomer: boolean;
+  isStaff: boolean;
   accessToken: string | null;
   refreshToken: string | null;
   isAuthenticated: boolean;
@@ -142,9 +146,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
   }, [clearAuthSession, refresh]);
 
   const value = useMemo<AuthContextValue>(() => {
+    const role = getChatRoleFromSession(session?.user, session?.accessToken);
+
     return {
       session,
       user: session?.user || null,
+      role,
+      isCustomer: role === "customer",
+      isStaff: role === "staff",
       accessToken: session?.accessToken || null,
       refreshToken: session?.refreshToken || null,
       isAuthenticated: Boolean(session?.accessToken && session?.refreshToken),
