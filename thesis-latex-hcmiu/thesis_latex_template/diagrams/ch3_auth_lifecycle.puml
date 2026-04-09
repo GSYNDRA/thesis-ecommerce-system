@@ -1,0 +1,80 @@
+@startuml
+title Authentication Lifecycle Workflow
+autonumber
+
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+skinparam ParticipantPadding 20
+skinparam BoxPadding 10
+
+actor Customer
+participant "Web Frontend" as Frontend
+participant "Auth API\n(/api/v1/auth)" as Api
+participant "Auth Service" as AuthSvc
+database "user" as UserTbl
+database "user_sessions" as SessionTbl
+participant "JWT Service" as JwtSvc
+database "token_blacklist" as BlacklistTbl
+
+== Login ==
+Customer -> Frontend : Submit email/password
+Frontend -> Api : POST /auth/login
+Api -> AuthSvc : validate + authenticate
+AuthSvc -> UserTbl : findByEmail(email)
+UserTbl --> AuthSvc : user record
+
+alt Invalid credentials or locked account
+  AuthSvc --> Api : 401 / 423 error
+  Api --> Frontend : login failed response
+else Valid credentials
+  AuthSvc -> JwtSvc : generate access + refresh
+  JwtSvc --> AuthSvc : tokens + jti + exp
+  AuthSvc -> SessionTbl : create active session(jti)
+  AuthSvc --> Api : login success payload
+  Api --> Frontend : accessToken + refreshToken
+end
+
+== Authorized API access ==
+Frontend -> Api : Request with accessToken
+Api -> JwtSvc : verify accessToken
+
+alt Access token valid
+  JwtSvc --> Api : claims(userId, role, jti)
+  Api --> Frontend : protected resource response
+else Access token expired
+  JwtSvc --> Api : token expired
+  Api --> Frontend : 401 token expired
+end
+
+== Refresh token ==
+Frontend -> Api : POST /auth/refresh-token\n(accessToken, refreshToken)
+Api -> AuthSvc : refreshToken flow
+AuthSvc -> JwtSvc : verify refreshToken
+
+alt Refresh token invalid/revoked
+  AuthSvc --> Api : 401 refresh denied
+  Api --> Frontend : require re-login
+else Refresh token valid
+  AuthSvc -> SessionTbl : check active session(jti)
+  AuthSvc -> JwtSvc : rotate access token
+  JwtSvc --> AuthSvc : new accessToken
+  AuthSvc --> Api : refresh success
+  Api --> Frontend : new accessToken
+end
+
+== Logout ==
+Frontend -> Api : POST /auth/logout
+Api -> AuthSvc : logout(accessToken, refreshToken)
+AuthSvc -> SessionTbl : revoke session by jti
+AuthSvc -> BlacklistTbl : blacklist access token jti
+AuthSvc --> Api : logout success
+Api --> Frontend : 200 logged out
+
+== Post-logout request ==
+Frontend -> Api : Request with old accessToken
+Api -> BlacklistTbl : check token jti
+BlacklistTbl --> Api : blacklisted
+Api --> Frontend : 401 unauthorized
+
+@enduml
+

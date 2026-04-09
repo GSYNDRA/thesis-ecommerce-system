@@ -1,0 +1,251 @@
+﻿@startuml
+title Core Backend Schema Diagram (Authentication, Catalog, Cart, Order, Chat)
+hide methods
+hide stereotypes
+left to right direction
+
+skinparam shadowing false
+skinparam linetype ortho
+skinparam defaultTextAlignment left
+skinparam entity {
+  BackgroundColor #FFFFFF
+  BorderColor #374151
+}
+
+entity "user_role" as user_role {
+  * id <<PK>>
+  --
+  role_name
+}
+
+entity "user" as user {
+  * id <<PK>>
+  --
+  role_id <<FK>>
+  email
+  hash_password
+  status
+  is_email_verified
+}
+
+entity "user_sessions" as user_sessions {
+  * id <<PK>>
+  --
+  user_id <<FK>>
+  jti
+  revoked
+  expires_at
+}
+
+entity "token_blacklist" as token_blacklist {
+  * id <<PK>>
+  --
+  user_id <<FK>>
+  token_jti
+  expires_at
+}
+
+entity "staff_availability" as staff_availability {
+  * id <<PK>>
+  --
+  staff_id <<FK>>
+  is_online
+  is_available
+  last_heartbeat
+}
+
+entity "size_category" as size_category {
+  * id <<PK>>
+  --
+  size_cat_name
+}
+
+entity "category" as category {
+  * id <<PK>>
+  --
+  size_cat_id <<FK>>
+  parent_cat_id <<FK>>
+  category_name
+}
+
+entity "product" as product {
+  * id <<PK>>
+  --
+  category_id <<FK>>
+  product_name
+  product_slug
+}
+
+entity "colour" as colour {
+  * id <<PK>>
+  --
+  colour_name
+}
+
+entity "product_item" as product_item {
+  * id <<PK>>
+  --
+  product_id <<FK>>
+  colour_id <<FK>>
+  product_code
+  price
+}
+
+entity "size_option" as size_option {
+  * id <<PK>>
+  --
+  size_cat_id <<FK>>
+  size_name
+}
+
+entity "product_variation" as product_variation {
+  * id <<PK>>
+  --
+  product_item_id <<FK>>
+  size_id <<FK>>
+  qty_in_stock
+}
+
+entity "product_image" as product_image {
+  * id <<PK>>
+  --
+  product_item_id <<FK>>
+  image_filename
+}
+
+entity "cart" as cart {
+  * id <<PK>>
+  --
+  user_id <<FK>>
+  status
+}
+
+entity "cart_product" as cart_product {
+  * id <<PK>>
+  --
+  cart_id <<FK>>
+  variation_id <<FK>>
+  quantity
+  price
+}
+
+entity "orders" as orders {
+  * id <<PK>>
+  --
+  customer_id <<FK>>
+  cart_id <<FK>>
+  order_status
+  payment_status
+}
+
+entity "order_product" as order_product {
+  * id <<PK>>
+  --
+  order_id <<FK>>
+  product_id <<FK>>
+  product_item_id <<FK>>
+  variation_id <<FK>>
+  quantity
+}
+
+entity "discount" as discount {
+  * id <<PK>>
+  --
+  discount_code
+  discount_type
+  discount_value
+  discount_max_uses
+}
+
+entity "order_discount" as order_discount {
+  * id <<PK>>
+  --
+  order_id <<FK>>
+  customer_id <<FK>>
+  discount_id <<FK>>
+  discount_amount
+}
+
+entity "reservation" as reservation {
+  * id <<PK>>
+  --
+  customer_id <<FK>>
+  variation_id <<FK>>
+  quantity
+  expires_at
+}
+
+entity "chat_sessions" as chat_sessions {
+  * id <<PK>>
+  --
+  session_uuid
+  user_id <<FK>>
+  current_staff_id <<FK>>
+  mode
+  status
+}
+
+entity "chat_messages" as chat_messages {
+  * id <<PK>>
+  --
+  session_id <<FK>>
+  sender_id <<FK>>
+  sender_type
+  content
+}
+
+entity "chat_transfer_requests" as chat_transfer_requests {
+  * id <<PK>>
+  --
+  session_id <<FK>>
+  from_staff_id <<FK>>
+  to_staff_id <<FK>>
+  status
+}
+
+user_role ||--o{ user
+user ||--o{ user_sessions
+user ||--o{ token_blacklist
+user ||--|| staff_availability
+
+size_category ||--o{ category
+category ||--o{ category
+category ||--o{ product
+colour ||--o{ product_item
+product ||--o{ product_item
+size_category ||--o{ size_option
+product_item ||--o{ product_variation
+size_option ||--o{ product_variation
+product_item ||--o{ product_image
+
+user ||--o{ cart
+cart ||--o{ cart_product
+product_variation ||--o{ cart_product
+
+user ||--o{ orders
+cart ||--o{ orders
+orders ||--o{ order_product
+product ||--o{ order_product
+product_item ||--o{ order_product
+product_variation ||--o{ order_product
+
+discount ||--o{ order_discount
+orders ||--o{ order_discount
+user ||--o{ order_discount
+
+user ||--o{ reservation
+product_variation ||--o{ reservation
+
+user ||--o{ chat_sessions
+user ||--o{ chat_sessions
+chat_sessions ||--o{ chat_messages
+user ||--o{ chat_messages
+chat_sessions ||--o{ chat_transfer_requests
+user ||--o{ chat_transfer_requests
+user ||--o{ chat_transfer_requests
+
+@enduml
+
+
+
+

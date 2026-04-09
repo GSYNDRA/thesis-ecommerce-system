@@ -52,7 +52,7 @@ export class ChatService {
     try {
       await this.chatRedisService.setChatState(sessionUuid, state);
     } catch (error) {
-      console.warn(
+      console.warn( 
         `[ChatService] Failed to sync Redis chat state for ${sessionUuid}:`,
         error?.message || error,
       );

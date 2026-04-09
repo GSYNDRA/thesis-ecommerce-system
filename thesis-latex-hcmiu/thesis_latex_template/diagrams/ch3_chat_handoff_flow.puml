@@ -1,0 +1,82 @@
+@startuml
+title AI Chat and Human Handoff Workflow
+autonumber
+
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+skinparam ParticipantPadding 20
+
+actor Customer
+participant "Web Frontend" as Frontend
+participant "Socket Gateway\n(Socket.IO)" as Socket
+participant "Chat Service" as ChatSvc
+participant "AI Assistant Service" as AISvc
+participant "Staff Routing Service" as RoutingSvc
+participant "Staff Dashboard" as StaffUI
+database "chat_sessions /\nchat_messages /\nchat_transfer_requests" as ChatDb
+database "Redis\n(session + heartbeat)" as Redis
+
+== Session Start ==
+Customer -> Frontend : Open support chat
+Frontend -> Socket : connect(auth_token)
+Socket -> ChatSvc : createOrResumeSession(userId)
+ChatSvc -> ChatDb : find/open chat session
+ChatDb --> ChatSvc : session_id
+ChatSvc -> Redis : init session cache + heartbeat key
+Redis --> ChatSvc : ok
+ChatSvc --> Socket : session ready
+Socket --> Frontend : chat connected
+
+== AI-first Handling ==
+Customer -> Frontend : Send message
+Frontend -> Socket : emit message
+Socket -> ChatSvc : persistIncomingMessage
+ChatSvc -> ChatDb : insert chat_messages(sender=customer)
+ChatDb --> ChatSvc : saved
+ChatSvc -> AISvc : generate response(context)
+AISvc --> ChatSvc : ai_reply + confidence
+ChatSvc -> ChatDb : insert chat_messages(sender=ai)
+ChatSvc --> Socket : push ai response
+Socket --> Frontend : show ai response
+
+== Escalation to Human ==
+alt User requests human or low AI confidence
+  ChatSvc -> RoutingSvc : requestStaffAssignment(session_id)
+  RoutingSvc -> Redis : find available staff by heartbeat
+  Redis --> RoutingSvc : candidate staff_id
+
+  alt Staff available
+    RoutingSvc -> ChatDb : create transfer/assignment record
+    RoutingSvc --> ChatSvc : assigned staff_id
+    ChatSvc -> StaffUI : notify assigned staff
+    StaffUI --> ChatSvc : accept handoff
+    ChatSvc -> ChatDb : update chat_sessions(current_staff_id, mode=HUMAN)
+    ChatSvc --> Socket : notify handoff success
+    Socket --> Frontend : "Connected to staff"
+  else No staff available
+    RoutingSvc --> ChatSvc : no staff
+    ChatSvc --> Socket : fallback to AI queue mode
+    Socket --> Frontend : "Staff unavailable, AI continues"
+  end
+end
+
+== Human Conversation ==
+StaffUI -> ChatSvc : send staff message
+ChatSvc -> ChatDb : insert chat_messages(sender=staff)
+ChatDb --> ChatSvc : saved
+ChatSvc --> Socket : push staff message
+Socket --> Frontend : show staff response
+
+== Handoff Continuity ==
+ChatSvc -> Redis : monitor staff heartbeat TTL
+alt Heartbeat expired while session is HUMAN
+  ChatSvc -> RoutingSvc : trigger reassignment
+  RoutingSvc -> Redis : pick next available staff
+  Redis --> RoutingSvc : new_staff_id / none
+  RoutingSvc -> ChatDb : update session owner or set AI fallback
+  RoutingSvc --> ChatSvc : reassignment result
+  ChatSvc --> Socket : notify continuity update
+  Socket --> Frontend : keep conversation active
+end
+
+@enduml

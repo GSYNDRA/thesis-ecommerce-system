@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Loader2, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { catalogApi, type ProductListItem } from "@/lib/api/catalog.api";
 import { ApiError } from "@/lib/api/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 function formatPrice(value: number) {
   return new Intl.NumberFormat("en-US", {
@@ -23,6 +24,8 @@ function buildPriceLabel(item: ProductListItem) {
 }
 
 export default function ProductListPage() {
+  const navigate = useNavigate();
+  const { isAuthenticated, isCustomer, user, logout } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const page = Math.max(1, Number(searchParams.get("page") || 1));
   const q = searchParams.get("q") || "";
@@ -41,6 +44,7 @@ export default function ProductListPage() {
     totalPages: 1,
   });
   const [categories, setCategories] = useState<Array<{ id: number; name: string; count: number }>>([]);
+  const [loggingOut, setLoggingOut] = useState(false);
 
   useEffect(() => {
     setSearchText(q);
@@ -137,15 +141,35 @@ export default function ProductListPage() {
     });
   }
 
+  async function onLogout() {
+    setLoggingOut(true);
+    try {
+      await logout();
+      navigate("/auth/login", { replace: true });
+    } finally {
+      setLoggingOut(false);
+    }
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border">
-        <div className="mx-auto max-w-6xl px-6 py-10">
-          <p className="text-xs font-semibold uppercase tracking-widest text-accent">Fashion Ecommerce</p>
-          <h1 className="mt-2 font-serif text-4xl font-semibold">Product Catalog</h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Choose a product, then select color and size on the detail page.
-          </p>
+        <div className="mx-auto flex max-w-6xl items-start justify-between gap-4 px-6 py-10">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-widest text-accent">Fashion Ecommerce</p>
+            <h1 className="mt-2 font-serif text-4xl font-semibold">Product Catalog</h1>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Choose a product, then select color and size on the detail page.
+            </p>
+          </div>
+          {isAuthenticated && isCustomer ? (
+            <div className="space-y-2 text-right">
+              <p className="max-w-[260px] truncate text-xs text-muted-foreground">{user?.email || "Customer"}</p>
+              <Button variant="outline" size="sm" onClick={() => void onLogout()} disabled={loggingOut}>
+                {loggingOut ? "Signing out..." : "Log out"}
+              </Button>
+            </div>
+          ) : null}
         </div>
       </header>
 

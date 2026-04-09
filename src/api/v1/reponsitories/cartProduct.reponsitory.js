@@ -1,6 +1,5 @@
 import BaseRepository from "./base.reponsitory.js";
 import CartProductModel from "../models/cart_product.js";
-import { where } from "sequelize";
 
 export default class CartProductRepository extends BaseRepository {
   constructor() {
@@ -20,13 +19,25 @@ export default class CartProductRepository extends BaseRepository {
     return this.create(data);
   }
 
+  async findByIdAndCart(cartProductId, cartId) {
+    return this.findOne({
+      id: cartProductId,
+      cart_id: cartId,
+    });
+  }
+
   async updateQuantity(cartProductId, quantity) {
     return this.update({ id: cartProductId }, { quantity });
   }
+
+  async removeById(cartProductId) {
+    return this.delete({ id: cartProductId });
+  }
+
   async findByCartId(cartId) {
     return this.model.findAll({
       where: { cart_id: cartId },
-      attributes: ["variation_id", "quantity", "price"],
+      attributes: ["id", "cart_id", "variation_id", "quantity", "price"],
     });
   }
 }

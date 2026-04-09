@@ -1,0 +1,91 @@
+@startuml
+title Catalog-to-Cart Workflow
+autonumber
+
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+skinparam ParticipantPadding 20
+
+actor Customer
+participant "Web Frontend" as Frontend
+participant "Catalog API\n(/api/v1/catalog)" as CatalogApi
+participant "Cart API\n(/api/v1/cart)" as CartApi
+participant "Checkout API\n(/api/v1/checkout)" as CheckoutApi
+participant "Catalog Service" as CatalogSvc
+participant "Cart Service" as CartSvc
+participant "Checkout Service" as CheckoutSvc
+participant "Reservation Service\n(Redis/Lua)" as ReservationSvc
+database "product / product_item /\nproduct_variation" as ProductDb
+database "cart / cart_product" as CartDb
+database "reservation keys (Redis)" as Redis
+
+== Browse Products ==
+Customer -> Frontend : Open product listing
+Frontend -> CatalogApi : GET /catalog/products?filters...
+CatalogApi -> CatalogSvc : getProducts(query)
+CatalogSvc -> ProductDb : load published products + variants
+ProductDb --> CatalogSvc : product rows
+CatalogSvc --> CatalogApi : normalized product payload
+CatalogApi --> Frontend : list response
+
+== View Product Detail ==
+Customer -> Frontend : Select product
+Frontend -> CatalogApi : GET /catalog/products/{slug}
+CatalogApi -> CatalogSvc : getProductDetail(slug)
+CatalogSvc -> ProductDb : load product + items + variations
+ProductDb --> CatalogSvc : detail rows
+CatalogSvc --> CatalogApi : detailed payload
+CatalogApi --> Frontend : detail response
+
+== Add Item to Cart ==
+Customer -> Frontend : Add selected variation
+Frontend -> CartApi : POST /cart/add
+CartApi -> CartSvc : addToCart(userId, variationId, qty)
+CartSvc -> ProductDb : validate variation + stock
+ProductDb --> CartSvc : variant data
+
+alt Stock not enough or invalid variation
+  CartSvc --> CartApi : validation error
+  CartApi --> Frontend : add-to-cart failed
+else Stock valid
+  CartSvc -> CartDb : get/create active cart
+  CartSvc -> CartDb : insert/update cart_product
+  CartSvc -> CartDb : rebuild cart snapshot totals
+  CartDb --> CartSvc : updated cart state
+  CartSvc --> CartApi : cart snapshot
+  CartApi --> Frontend : add-to-cart success
+end
+
+== Update/Remove Cart Item ==
+Customer -> Frontend : Update qty or remove item
+Frontend -> CartApi : PATCH/DELETE cart item
+CartApi -> CartSvc : updateCartItemQuantity/removeCartItem
+CartSvc -> ProductDb : re-check stock when needed
+CartSvc -> CartDb : persist change + recalc totals
+CartDb --> CartSvc : updated cart snapshot
+CartSvc --> CartApi : operation result
+CartApi --> Frontend : refreshed cart
+
+== Checkout Preview and Reservation Setup ==
+Customer -> Frontend : Proceed to checkout
+Frontend -> CheckoutApi : POST /checkout/preview
+CheckoutApi -> CheckoutSvc : buildPreview(userId, cartId)
+CheckoutSvc -> CartDb : load active cart items
+CartDb --> CheckoutSvc : cart lines
+CheckoutSvc -> ProductDb : load latest stock + prices
+ProductDb --> CheckoutSvc : validation data
+CheckoutSvc -> ReservationSvc : reserve(stock, voucher, ttl)
+ReservationSvc -> Redis : execute atomic Lua script
+Redis --> ReservationSvc : reservation_token + expiry
+
+alt Reservation failed
+  ReservationSvc --> CheckoutSvc : failed(reason)
+  CheckoutSvc --> CheckoutApi : checkout blocked
+  CheckoutApi --> Frontend : show out-of-stock/limit message
+else Reservation succeeded
+  ReservationSvc --> CheckoutSvc : reservation_token
+  CheckoutSvc --> CheckoutApi : preview + token + expiry
+  CheckoutApi --> Frontend : ready for payment
+end
+
+@enduml

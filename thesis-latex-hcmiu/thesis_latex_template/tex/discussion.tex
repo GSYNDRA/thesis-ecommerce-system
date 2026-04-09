@@ -1,0 +1,170 @@
+\chapter{DISCUSSION AND EVALUATION}
+\label{ch:discussion-evaluation}
+
+\section{Evaluation Scope}
+
+This chapter evaluates how the implemented backend satisfies the objectives defined in Chapter 1 and the methodology in Chapter 3. The evaluation focuses on behavior-level correctness, consistency under contention, reliability of callback finalization, and continuity of realtime support flows.
+
+\subsection{Evaluation Targets}
+
+\begin{itemize}
+    \item Target 1: secure and correct authentication/session lifecycle.
+    \item Target 2: stable catalog and cart behavior with stock-aware checks.
+    \item Target 3: concurrency-safe checkout reservation for stock and voucher quotas.
+    \item Target 4: reliable payment finalization with callback verification and idempotent handling.
+    \item Target 5: realtime AI chat escalation and continuity when staff availability changes.
+\end{itemize}
+
+\subsection{Evaluation Strategy}
+
+The evaluation uses scenario-based validation with representative request sequences:
+\begin{itemize}
+    \item normal customer journey from login to paid order;
+    \item concurrent checkout attempts on shared inventory;
+    \item repeated and delayed payment callback events;
+    \item chat escalation and reassignment on staff disconnect/heartbeat timeout.
+\end{itemize}
+
+\section{Scenario-Based Results}
+
+\subsection{Authentication and Session Security}
+
+The authentication module was validated across register, email verification, login, refresh, logout, and password recovery endpoints. The service-layer token checks and session invalidation logic provide consistent login-state transitions for protected APIs.
+
+\begin{table}[H]
+\centering
+\caption{Authentication Evaluation Outcomes}
+\label{tab:discussion-auth-outcomes}
+\begin{tabular}{|p{3.4cm}|p{4.2cm}|p{4.4cm}|}
+\hline
+\textbf{Scenario} & \textbf{Expected Behavior} & \textbf{Observed Outcome} \\
+\hline
+Register and verify email & New account created and activated after verification & Verification flow completed and account state updated correctly \\
+\hline
+Refresh token rotation & Valid refresh token yields renewed access context & Token renewal accepted only with valid auth context \\
+\hline
+Logout + reuse token & Session/token should not remain reusable & Invalidated session state prevented unauthorized continuation \\
+\hline
+Password recovery (OTP) & Only valid OTP/reset context can change password & Reset flow accepted valid OTP context and rejected invalid cases \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsection{Catalog and Cart Behavior}
+
+Catalog endpoints returned structured product and filter payloads for browsing and detail views. Cart operations correctly handled add/update/remove transitions and kept cart snapshots synchronized with validation checks at service level.
+
+\begin{table}[H]
+\centering
+\caption{Catalog and Cart Evaluation Outcomes}
+\label{tab:discussion-cart-outcomes}
+\begin{tabular}{|p{3.4cm}|p{4.2cm}|p{4.4cm}|}
+\hline
+\textbf{Scenario} & \textbf{Expected Behavior} & \textbf{Observed Outcome} \\
+\hline
+Product listing and detail retrieval & Correct pagination/filtering and detail payload & Responses aligned with requested filters and slug targets \\
+\hline
+Add to cart with valid variation & Item added or merged into active cart correctly & Cart update succeeded with snapshot recomputation \\
+\hline
+Quantity update beyond stock limit & Request should be blocked by stock validation & Validation rejected invalid quantity changes \\
+\hline
+Remove cart item & Cart state should remain consistent after deletion & Item removal completed and totals refreshed \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsection{Checkout Reservation Consistency}
+
+Checkout uses Redis and Lua to atomically reserve stock and discount capacity before order placement. This strategy addresses race conditions in high-contention scenarios by validating and applying reservation changes in a single atomic operation.
+
+\begin{table}[H]
+\centering
+\caption{Checkout Reservation Evaluation Outcomes}
+\label{tab:discussion-checkout-outcomes}
+\begin{tabular}{|p{3.4cm}|p{4.2cm}|p{4.4cm}|}
+\hline
+\textbf{Scenario} & \textbf{Expected Behavior} & \textbf{Observed Outcome} \\
+\hline
+Normal preview and place-order & Reservation created and pending order generated & Checkout succeeded with reservation metadata persisted \\
+\hline
+Concurrent reservation on same stock & No over-reservation should occur & Contended requests were bounded by atomic reservation checks \\
+\hline
+Reservation expiry without payment & Stale reservation should be rolled back & Expiry subscriber released resources and canceled stale order \\
+\hline
+Voucher quota contention & Usage limit should be preserved & Reservation counters prevented quota overflow during contention \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsection{Payment Callback Finalization}
+
+Payment processing was evaluated through MoMo callback scenarios covering valid, invalid, and repeated notifications. Signature verification and idempotent update strategy reduced the risk of duplicate or inconsistent finalization.
+
+\begin{table}[H]
+\centering
+\caption{Payment Finalization Evaluation Outcomes}
+\label{tab:discussion-payment-outcomes}
+\begin{tabular}{|p{3.4cm}|p{4.2cm}|p{4.4cm}|}
+\hline
+\textbf{Scenario} & \textbf{Expected Behavior} & \textbf{Observed Outcome} \\
+\hline
+Valid callback signature & Order finalized according to payment result & Order/payment state updated and reservation handled correctly \\
+\hline
+Invalid callback signature & Callback must be rejected & Invalid callback processing path rejected untrusted payloads \\
+\hline
+Duplicate callback delivery & Final state should not be duplicated/corrupted & Idempotent guard prevented unsafe repeated finalization \\
+\hline
+Post-payment persistence & Order lines and discounts should be materialized & Order products and discount usage persisted for completed order \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsection{Realtime Chat and Handoff Continuity}
+
+The chat subsystem was evaluated with AI-first response handling, escalation requests, staff assignment, and disconnect recovery. Socket-based event flow and heartbeat-based reassignment preserved session continuity when staff availability changed.
+
+\begin{table}[H]
+\centering
+\caption{Realtime Chat Evaluation Outcomes}
+\label{tab:discussion-chat-outcomes}
+\begin{tabular}{|p{3.4cm}|p{4.2cm}|p{4.4cm}|}
+\hline
+\textbf{Scenario} & \textbf{Expected Behavior} & \textbf{Observed Outcome} \\
+\hline
+AI-first customer interaction & Session receives AI response with context & AI response path executed for eligible messages \\
+\hline
+Manual escalation to human support & Session routed to available staff when possible & Assignment flow connected customer session to staff \\
+\hline
+Staff disconnect during active session & Session continuity should be maintained & Reassignment or fallback path kept session active \\
+\hline
+Heartbeat timeout event & Offline staff should be handled automatically & Expiry subscriber triggered offline and continuity workflow \\
+\hline
+\end{tabular}
+\end{table}
+
+\section{Discussion of Engineering Trade-offs}
+
+\subsection{Modular Monolith vs. Distributed Services}
+
+The modular monolith approach improved implementation speed and operational simplicity while preserving clear service boundaries. This is appropriate for the current project scale. However, the architecture still requires careful module discipline to avoid future coupling growth.
+
+\subsection{Redis Coordination vs. Pure Database Locking}
+
+Using Redis reservation counters and Lua scripts reduces lock contention and supports fast short-lived coordination. The trade-off is additional operational complexity (key lifecycle, rollback logic, expiry monitoring) compared with pure SQL transactions.
+
+\subsection{AI-first Support vs. Human-only Support}
+
+AI-first handling improves responsiveness for common requests and reduces staff load. Human handoff remains necessary for complex cases, and overall quality depends on routing quality, staff availability, and stable realtime signaling.
+
+\section{Limitations and Threats to Validity}
+
+\begin{itemize}
+    \item Quantitative load testing is constrained by available local infrastructure; large-scale production traffic patterns were not fully reproduced.
+    \item External dependencies (payment provider and AI provider) introduce variable latency and failure modes that may affect end-to-end behavior.
+    \item Some evaluation evidence is scenario-driven rather than long-term production telemetry.
+    \item Multi-region deployment and disaster-recovery validation were outside the current project scope.
+\end{itemize}
+
+\section{Chapter Summary}
+
+The evaluation indicates that the implemented backend satisfies the core objectives: secure session control, consistency-safe checkout reservation, reliable payment finalization, and resilient realtime support continuity. The main trade-off is increased coordination complexity, which can be further improved through deeper observability and larger-scale benchmarking in future work.

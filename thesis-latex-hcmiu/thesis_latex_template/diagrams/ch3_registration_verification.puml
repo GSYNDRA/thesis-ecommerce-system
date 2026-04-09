@@ -1,0 +1,61 @@
+@startuml
+title Registration and Verification Workflow
+autonumber
+
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+skinparam ParticipantPadding 20
+
+actor User
+participant "Web Frontend" as Frontend
+participant "Auth API\n(/api/v1/auth)" as Api
+participant "Auth Service" as AuthSvc
+database "user" as UserTbl
+participant "Email Service" as EmailSvc
+participant "JWT Service" as JwtSvc
+database "user_sessions" as SessionTbl
+
+== Registration ==
+User -> Frontend : Fill registration form
+Frontend -> Api : POST /auth/register
+Api -> AuthSvc : register(payload)
+AuthSvc -> UserTbl : findByEmail(email)
+UserTbl --> AuthSvc : existing user or null
+
+alt Email already verified
+  AuthSvc --> Api : conflict (email already registered)
+  Api --> Frontend : registration failed
+else New account
+  AuthSvc -> AuthSvc : hash password\ncreate verify token
+  AuthSvc -> UserTbl : create user (is_email_verified=false)
+  AuthSvc -> EmailSvc : send verification link
+  AuthSvc --> Api : registration accepted
+  Api --> Frontend : ask user to verify email
+else Existing but unverified
+  AuthSvc -> AuthSvc : regenerate verify token
+  AuthSvc -> UserTbl : update verify token + expiry
+  AuthSvc -> EmailSvc : resend verification link
+  AuthSvc --> Api : verification resent
+  Api --> Frontend : check your email
+end
+
+== Email Verification ==
+User -> Frontend : Click verification link
+Frontend -> Api : GET /auth/verify-email?token=...
+Api -> AuthSvc : verifyEmail(token)
+AuthSvc -> UserTbl : find by hashed token + not expired
+
+alt Invalid or expired token
+  AuthSvc --> Api : verification failed
+  Api --> Frontend : invalid/expired link
+else Valid token
+  AuthSvc -> UserTbl : mark is_email_verified=true\nclear verification token
+  AuthSvc -> JwtSvc : generate access + refresh token
+  JwtSvc --> AuthSvc : tokens + jti + exp
+  AuthSvc -> SessionTbl : create active session
+  AuthSvc --> Api : verification success + tokens
+  Api --> Frontend : account activated
+end
+
+@enduml
+

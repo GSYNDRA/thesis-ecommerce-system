@@ -9,6 +9,7 @@ import { MessageList } from "@/components/chat/MessageList";
 import { StatusBanner } from "@/components/chat/StatusBanner";
 import { useCustomerChatSession } from "@/hooks/chat/useCustomerChatSession";
 import { getSafeReturnUrl } from "@/lib/auth/navigation";
+import { useAuth } from "@/contexts/AuthContext";
 import { Bot, RefreshCw, ShieldAlert } from "lucide-react";
 
 function stateLabel(state: string): string {
@@ -26,6 +27,7 @@ function stateLabel(state: string): string {
 export default function SupportChatPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { logout } = useAuth();
   const params = useMemo(() => new URLSearchParams(location.search), [location.search]);
   const returnUrl = useMemo(
     () => getSafeReturnUrl(params.get("returnUrl"), "/"),
@@ -33,6 +35,7 @@ export default function SupportChatPage() {
   );
   const [input, setInput] = useState("");
   const [handoffReason, setHandoffReason] = useState("");
+  const [loggingOut, setLoggingOut] = useState(false);
   const {
     state,
     sessionUuid,
@@ -116,6 +119,16 @@ export default function SupportChatPage() {
     navigate(returnUrl, { replace: true });
   };
 
+  async function onLogout() {
+    setLoggingOut(true);
+    try {
+      await logout();
+      navigate("/auth/login", { replace: true });
+    } finally {
+      setLoggingOut(false);
+    }
+  }
+
   const stateAccent =
     state === "assigned"
       ? "bg-success/10 text-success"
@@ -146,6 +159,9 @@ export default function SupportChatPage() {
             <Badge className={stateAccent}>{stateLabel(state)}</Badge>
             <Button variant="ghost" onClick={onBack}>
               Back
+            </Button>
+            <Button variant="outline" onClick={() => void onLogout()} disabled={loggingOut}>
+              {loggingOut ? "Signing out..." : "Log out"}
             </Button>
           </>
         }

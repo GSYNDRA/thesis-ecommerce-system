@@ -1,0 +1,64 @@
+\chapter{LITERATURE REVIEW/RELATED WORK}
+\label{ch:related-work}
+
+\section{Introduction}
+
+This chapter reviews technical foundations and prior approaches relevant to the backend scope of this thesis. The review focuses on architecture design, authentication and session control, transactional consistency in checkout, payment callback reliability, real-time support workflows, and scalability strategies.
+
+\section{E-Commerce Backend Architectures}
+
+Backend systems for e-commerce commonly adopt either modular monolithic architecture or microservices architecture. Microservices provide independent deployment and scaling at service boundaries, but they also increase distributed-system complexity, operational overhead, and cross-service consistency risks.
+
+For projects with constrained team size and delivery timeline, modular monoliths remain practical when internal boundaries are clear. The route-controller-service-repository layering pattern is frequently used to maintain code organization while keeping deployment simple.
+
+\section{Authentication and Session Security}
+
+Authentication in modern web systems usually combines short-lived access tokens with longer-lived refresh tokens. Additional protection mechanisms include email verification, password reset flows, and session revocation.
+
+Common challenges include token theft impact, stale session accumulation, and weak recovery flows. Prior work emphasizes strict validation at API boundaries and explicit session lifecycle tracking for better operational security.
+
+\section{Catalog, Cart, and Transaction Consistency}
+
+Catalog and cart modules require consistent stock visibility and predictable behavior under concurrent updates. Typical issues include stale availability information, race conditions when updating cart quantities, and conflicts during checkout transition.
+
+Design approaches in the literature include pessimistic database locks, optimistic control with version checks, and hybrid patterns that combine persistent data with short-lived coordination state.
+
+\section{Checkout Reservation and Concurrency Control}
+
+Checkout consistency becomes difficult when multiple users attempt to reserve the same stock or voucher quotas at nearly the same time. Approaches discussed in prior systems include:
+\begin{itemize}
+    \item direct database locking strategies;
+    \item distributed in-memory reservation keys;
+    \item atomic scripts to prevent partial resource updates.
+\end{itemize}
+
+In-memory coordination layers such as Redis are widely used for reservation windows and expiration-driven rollback behavior in high-traffic purchasing flows.
+
+\section{Payment Callback Reliability}
+
+Payment finalization in e-commerce often relies on asynchronous callbacks from external gateways. Reliable handling requires three controls:
+\begin{itemize}
+    \item signature verification to authenticate callback origin;
+    \item idempotent processing to prevent duplicate state transitions;
+    \item explicit synchronization between payment status and order status.
+\end{itemize}
+
+Without these controls, systems risk inconsistent order states and financial reconciliation errors.
+
+\section{Real-Time Customer Support Systems}
+
+AI-assisted chat support is increasingly used to reduce response time for repetitive requests. However, purely automated chat is often insufficient for complex customer issues. Many production systems therefore adopt a hybrid model: AI for first-response handling and human escalation for unresolved cases.
+
+Socket-based communication patterns are common for live support channels, especially when workload distribution and reassignment are required for support staff continuity.
+
+\section{Scalability and Operational Reliability}
+
+Scalability practices in backend systems include caching, transient coordination data, asynchronous task execution, and health monitoring. Redis is frequently used for short-lived state (for example, reservation counters, heartbeat keys, and chat session metadata).
+
+Operational reliability is also shaped by error isolation, structured logging, and graceful shutdown behavior across API servers, database connections, and realtime channels.
+
+\section{Research Gap and Thesis Positioning}
+
+Prior approaches usually optimize one or two concerns in isolation, such as authentication, payment correctness, or chatbot automation. Fewer works provide a unified backend design that addresses session security, checkout concurrency control, payment callback reliability, and realtime human-handoff support in one consistent implementation.
+
+This thesis is positioned to address that integration gap through a backend architecture that combines modular API design, Redis-assisted coordination, and realtime support continuity mechanisms.

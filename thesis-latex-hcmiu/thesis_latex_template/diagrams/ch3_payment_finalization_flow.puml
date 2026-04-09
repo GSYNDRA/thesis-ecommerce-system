@@ -1,0 +1,79 @@
+@startuml
+title Checkout-to-Payment Finalization Workflow
+autonumber
+
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+skinparam ParticipantPadding 20
+
+actor Customer
+participant "Web Frontend" as Frontend
+participant "Checkout API\n(/api/v1/checkout)" as CheckoutApi
+participant "Order Service" as OrderSvc
+participant "Payment Gateway" as Gateway
+participant "Webhook API\n(/api/v1/payment/callback)" as WebhookApi
+participant "Payment Service" as PaymentSvc
+participant "Reservation Service\n(Redis/Lua)" as ReservationSvc
+database "orders / order_product /\norder_discount" as OrderDb
+database "reservation keys (Redis)" as Redis
+
+== Create Pending Order and Payment Intent ==
+Customer -> Frontend : Confirm checkout
+Frontend -> CheckoutApi : POST /checkout/confirm\n(reservation_token, shipping, payment_method)
+CheckoutApi -> OrderSvc : createPendingOrder(...)
+OrderSvc -> Redis : validate reservation token
+Redis --> OrderSvc : reservation valid
+OrderSvc -> OrderDb : insert order(status=PENDING_PAYMENT)
+OrderDb --> OrderSvc : order_id
+OrderSvc --> CheckoutApi : order summary + payable amount
+CheckoutApi -> Gateway : create payment request
+Gateway --> CheckoutApi : payment_url / txn_ref
+CheckoutApi --> Frontend : redirect payment_url
+Customer -> Gateway : Complete payment
+
+== Callback Verification and Finalization ==
+Gateway -> WebhookApi : POST payment callback
+WebhookApi -> PaymentSvc : processCallback(payload, signature)
+PaymentSvc -> PaymentSvc : verify signature and timestamp
+
+alt Invalid signature or malformed payload
+  PaymentSvc --> WebhookApi : reject callback
+  WebhookApi --> Gateway : 400/401
+else Valid callback
+  PaymentSvc -> OrderDb : find order by txn_ref
+  OrderDb --> PaymentSvc : order row
+  PaymentSvc -> OrderDb : check payment_event table by gateway_event_id
+  OrderDb --> PaymentSvc : existed?
+
+  alt Duplicate callback event
+    PaymentSvc --> WebhookApi : idempotent ACK
+    WebhookApi --> Gateway : 200 OK
+  else First callback event
+    alt Payment success
+      PaymentSvc -> OrderDb : update order to PAID + save transaction
+      PaymentSvc -> ReservationSvc : consume reservation token
+      ReservationSvc -> Redis : delete reservation keys
+      Redis --> ReservationSvc : consumed
+      PaymentSvc --> WebhookApi : finalized success
+      WebhookApi --> Gateway : 200 OK
+    else Payment failed/expired
+      PaymentSvc -> OrderDb : update order to CANCELLED/FAILED
+      PaymentSvc -> ReservationSvc : release reservation
+      ReservationSvc -> Redis : rollback stock/voucher counters
+      Redis --> ReservationSvc : released
+      PaymentSvc --> WebhookApi : finalized failure
+      WebhookApi --> Gateway : 200 OK
+    end
+  end
+end
+
+== Client Status Refresh ==
+Customer -> Frontend : Open order status page
+Frontend -> CheckoutApi : GET /checkout/status/{orderId}
+CheckoutApi -> OrderSvc : getOrderStatus(orderId)
+OrderSvc -> OrderDb : read latest order/payment status
+OrderDb --> OrderSvc : status snapshot
+OrderSvc --> CheckoutApi : status response
+CheckoutApi --> Frontend : show paid/failed result
+
+@enduml

@@ -1,0 +1,84 @@
+@startuml
+title Overall Backend Architecture of the Intelligent Fashion E-Commerce System
+left to right direction
+
+skinparam shadowing false
+skinparam packageStyle rectangle
+skinparam defaultTextAlignment center
+skinparam componentStyle rectangle
+skinparam ArrowColor #4B5563
+skinparam packageBorderColor #1F2937
+skinparam packageBackgroundColor #F9FAFB
+skinparam componentBackgroundColor #FFFFFF
+skinparam componentBorderColor #374151
+skinparam databaseBackgroundColor #FFFFFF
+skinparam databaseBorderColor #374151
+skinparam cloudBackgroundColor #FFFFFF
+skinparam cloudBorderColor #374151
+
+package "Clients" {
+  [Web Frontend\n(Customer)] as WebClient
+  [Staff Dashboard] as StaffClient
+}
+
+package "Backend\n(Node.js + Express + Socket.IO)" {
+  component "REST API Layer\n(/api/v1)" as Api
+  component "WebSocket Gateway\n(Socket.IO)" as Ws
+
+  component "Auth & Session Service" as AuthSvc
+  component "Catalog Service" as CatalogSvc
+  component "Cart Service" as CartSvc
+  component "Checkout & Reservation Service" as CheckoutSvc
+  component "Payment Service" as PaymentSvc
+  component "Chat Service" as ChatSvc
+
+  component "Repository Layer" as Repo
+  component "Expiry Subscribers\n(Reservation / Heartbeat)" as Subscribers
+}
+
+package "Data Stores" {
+  database "PostgreSQL" as Pg
+  database "Redis" as Redis
+}
+
+package "External Services" {
+  cloud "MoMo Payment Gateway" as MoMo
+  cloud "AI Provider (LLM API)" as AI
+  cloud "Email Service (SMTP)" as Email
+}
+
+WebClient --> Api : HTTPS REST
+WebClient --> Ws : Socket.IO events
+StaffClient --> Api : HTTPS REST
+StaffClient --> Ws : Socket.IO events
+
+Api --> AuthSvc : /auth
+Api --> CatalogSvc : /catalog
+Api --> CartSvc : /cart
+Api --> CheckoutSvc : /checkout
+Api --> PaymentSvc : /payment
+Api --> ChatSvc : /chat
+
+Ws --> ChatSvc : realtime chat events
+
+AuthSvc --> Repo
+CatalogSvc --> Repo
+CartSvc --> Repo
+CheckoutSvc --> Repo
+PaymentSvc --> Repo
+ChatSvc --> Repo
+Repo --> Pg : ORM/SQL
+
+CheckoutSvc --> Redis : reservation keys + Lua
+ChatSvc --> Redis : chat state + heartbeat
+Subscribers --> Redis : keyspace expiry events
+Subscribers --> ChatSvc : reassign sessions
+Subscribers --> CheckoutSvc : rollback reservations
+
+PaymentSvc --> MoMo : create payment request
+MoMo --> Api : IPN callback
+ChatSvc --> AI : generate AI response
+AuthSvc --> Email : verification/reset mail
+
+@enduml
+

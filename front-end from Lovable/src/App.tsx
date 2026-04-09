@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Navigate, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import AuthShowcase from "./pages/AuthShowcase";
@@ -32,8 +32,20 @@ import SupportChatPage from "@/pages/support/SupportChatPage";
 import StaffSupportDashboardPage from "@/pages/support/StaffSupportDashboardPage";
 import StaffConversationRoomPage from "@/pages/support/StaffConversationRoomPage";
 import { GlobalChatLauncher } from "@/components/chat/GlobalChatLauncher";
+import { useAuth } from "@/contexts/AuthContext";
 
 const queryClient = new QueryClient();
+
+function HomeRoute() {
+  const { role } = useAuth();
+  if (role === "customer") {
+    return <Navigate to="/products" replace />;
+  }
+  if (role === "staff") {
+    return <Navigate to="/staff/support" replace />;
+  }
+  return <Index />;
+}
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -47,7 +59,7 @@ const App = () => (
               path="/"
               element={
                 <ProtectedRoute>
-                  <Index />
+                  <HomeRoute />
                 </ProtectedRoute>
               }
             />

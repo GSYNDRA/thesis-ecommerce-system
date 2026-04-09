@@ -9,6 +9,7 @@ import {
 } from "react";
 import { authApi, type AuthUser, type LoginPayload } from "@/lib/api/auth.api";
 import { setUnauthorizedHandler } from "@/lib/api/client";
+import { getChatSocketClient } from "@/lib/chat/chat.socket";
 import {
   AUTH_SESSION_STORAGE_KEY,
   clearSession,
@@ -43,6 +44,14 @@ interface AuthProviderProps {
 export function AuthProvider({ children }: AuthProviderProps) {
   const [session, setSessionState] = useState<AuthSession | null>(() => getSession());
 
+  const disconnectChatSocket = useCallback(() => {
+    try {
+      getChatSocketClient().disconnect();
+    } catch {
+      // noop
+    }
+  }, []);
+
   const setAuthSession = useCallback((nextSession: AuthSession | null) => {
     if (nextSession) {
       setSession(nextSession);
@@ -50,14 +59,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
       return;
     }
 
+    disconnectChatSocket();
     clearSession();
     setSessionState(null);
-  }, []);
+  }, [disconnectChatSocket]);
 
   const clearAuthSession = useCallback(() => {
+    disconnectChatSocket();
     clearSession();
     setSessionState(null);
-  }, []);
+  }, [disconnectChatSocket]);
 
   const refresh = useCallback(async (): Promise<AuthSession | null> => {
     const currentSession = getSession();
@@ -113,13 +124,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
   useEffect(() => {
     const onStorage = (event: StorageEvent) => {
       if (event.key === AUTH_SESSION_STORAGE_KEY) {
-        setSessionState(getSession());
+        const nextSession = getSession();
+        if (!nextSession) {
+          disconnectChatSocket();
+        }
+        setSessionState(nextSession);
       }
     };
 
     window.addEventListener("storage", onStorage);
     return () => window.removeEventListener("storage", onStorage);
-  }, []);
+  }, [disconnectChatSocket]);
 
   useEffect(() => {
     setUnauthorizedHandler(async () => {

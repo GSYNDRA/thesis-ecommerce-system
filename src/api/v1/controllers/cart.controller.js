@@ -26,7 +26,7 @@ export class CartController {
 
   getUserCart = async (req, res, next) => {
     try {
-      const userId = req.user.id;
+      const userId = req.auth.userId;
 
       const result = await this.cartServices.getUserCart(userId);
 
@@ -43,7 +43,7 @@ export class CartController {
 
   updateCartItemQuantity = async (req, res, next) => {
     try {
-      const userId = req.user.id;
+      const userId = req.auth.userId;
       const { cartItemId } = req.params;
       const body = req.body;
 
@@ -66,7 +66,7 @@ export class CartController {
 
   removeCartItem = async (req, res, next) => {
     try {
-      const userId = req.user.id;
+      const userId = req.auth.userId;
       const { cartItemId } = req.params;
 
       const result = await this.cartServices.removeCartItem(userId, cartItemId);

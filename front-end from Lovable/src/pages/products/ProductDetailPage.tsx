@@ -23,7 +23,7 @@ function formatPrice(value: number) {
 export default function ProductDetailPage() {
   const { slug = "" } = useParams();
   const navigate = useNavigate();
-  const { accessToken } = useAuth();
+  const { accessToken, isAuthenticated, isCustomer, logout } = useAuth();
 
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
@@ -36,6 +36,7 @@ export default function ProductDetailPage() {
   const [pendingOrder, setPendingOrder] = useState(() => getPendingOrderSession());
   const [orderStatus, setOrderStatus] = useState<OrderStatusData | null>(null);
   const [checkingStatus, setCheckingStatus] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
 
   const isCartLocked = Boolean(
     pendingOrder &&
@@ -187,6 +188,16 @@ export default function ProductDetailPage() {
     }
   }
 
+  async function onLogout() {
+    setLoggingOut(true);
+    try {
+      await logout();
+      navigate("/auth/login", { replace: true });
+    } finally {
+      setLoggingOut(false);
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
@@ -230,6 +241,11 @@ export default function ProductDetailPage() {
             <Link to="/" className="text-sm text-accent hover:underline">
               Home
             </Link>
+            {isAuthenticated && isCustomer ? (
+              <Button variant="outline" size="sm" onClick={() => void onLogout()} disabled={loggingOut}>
+                {loggingOut ? "Signing out..." : "Log out"}
+              </Button>
+            ) : null}
           </div>
         </div>
 

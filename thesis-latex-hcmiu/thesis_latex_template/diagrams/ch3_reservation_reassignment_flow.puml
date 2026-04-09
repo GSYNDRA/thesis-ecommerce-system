@@ -1,0 +1,62 @@
+@startuml
+title Reservation Expiry and Staff Reassignment Workflow
+autonumber
+
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+skinparam ParticipantPadding 20
+
+participant "Scheduler /\nBackground Worker" as Scheduler
+participant "Reservation Service" as ReservationSvc
+participant "Chat Continuity Service" as ContinuitySvc
+database "Redis\n(reservation + heartbeat keys)" as Redis
+database "orders / reservations /\nchat_sessions" as AppDb
+participant "Staff Routing Service" as RoutingSvc
+participant "Socket Gateway" as Socket
+participant "Web Frontend" as Frontend
+
+== A. Reservation Expiry Rollback ==
+Scheduler -> ReservationSvc : poll expiring reservations
+ReservationSvc -> Redis : scan expired reservation keys
+Redis --> ReservationSvc : expired tokens
+
+loop each expired token
+  ReservationSvc -> AppDb : load pending order/reservation
+  AppDb --> ReservationSvc : matched record
+
+  alt Order still unpaid and token valid for rollback
+    ReservationSvc -> AppDb : update order -> EXPIRED/CANCELLED
+    ReservationSvc -> Redis : rollback stock and voucher counters
+    Redis --> ReservationSvc : rollback success
+    ReservationSvc -> AppDb : mark reservation released
+  else Already paid or already finalized
+    ReservationSvc -> AppDb : no-op (idempotent skip)
+  end
+end
+
+== B. Staff Heartbeat Expiry and Reassignment ==
+Scheduler -> ContinuitySvc : poll stale staff heartbeats
+ContinuitySvc -> Redis : find expired staff heartbeat keys
+Redis --> ContinuitySvc : offline staff list
+
+loop each offline staff
+  ContinuitySvc -> AppDb : find open HUMAN sessions owned by staff
+  AppDb --> ContinuitySvc : affected sessions
+  ContinuitySvc -> RoutingSvc : request replacement staff
+  RoutingSvc -> Redis : query available staff pool
+  Redis --> RoutingSvc : replacement staff / none
+
+  alt Replacement staff found
+    RoutingSvc -> AppDb : reassign chat_sessions.current_staff_id
+    RoutingSvc --> ContinuitySvc : reassigned
+    ContinuitySvc -> Socket : notify reassigned session
+    Socket -> Frontend : "Your support specialist has changed"
+  else No replacement available
+    RoutingSvc -> AppDb : set session mode = AI_FALLBACK
+    RoutingSvc --> ContinuitySvc : fallback enabled
+    ContinuitySvc -> Socket : notify temporary AI fallback
+    Socket -> Frontend : "Human staff unavailable, AI continues"
+  end
+end
+
+@enduml

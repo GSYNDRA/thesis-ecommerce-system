@@ -1,0 +1,44 @@
+\chapter{CONCLUSION AND FUTURE WORK}
+\label{ch:conclusion-future-work}
+
+\section{Conclusion}
+
+This thesis presented the design and implementation of a backend system for an intelligent fashion e-commerce platform. The implemented solution addresses six core domains: authentication and session security, catalog querying, cart lifecycle management, checkout reservation control, payment callback finalization, and real-time AI chat with human handoff.
+
+From an engineering perspective, the backend applies a modular monolithic architecture with clear separation between routing, controller, service, and repository responsibilities. PostgreSQL is used as the transactional source of truth, while Redis provides short-lived coordination for reservation counters, heartbeat keys, and session-side runtime state. This combination enables practical reliability for concurrency-sensitive checkout and real-time support continuity.
+
+\section{Achievement of Objectives}
+
+The objectives defined in Chapter 1 were achieved as follows:
+\begin{itemize}
+    \item \textbf{Modular backend architecture}: implemented through explicit API layering and bounded service responsibilities.
+    \item \textbf{Consistency-safe checkout}: implemented by Redis and Lua-based atomic reservation for stock and discount quotas.
+    \item \textbf{Payment callback correctness}: implemented with MoMo signature verification and idempotent finalization flow.
+    \item \textbf{AI-to-human support continuity}: implemented with Socket.IO, staff assignment, heartbeat monitoring, and reassignment logic.
+    \item \textbf{Operational robustness}: strengthened by validation middleware, structured logging, and graceful shutdown handling.
+\end{itemize}
+
+\section{Limitations}
+
+Although the system meets the project goals, several limitations remain:
+\begin{itemize}
+    \item Evaluation scale is constrained by available local test infrastructure and workload volume.
+    \item Observability is currently log-centric; full distributed tracing and metrics dashboards are not yet fully integrated.
+    \item External provider dependency (payment gateway and AI provider) can introduce latency variability and failure modes outside direct system control.
+    \item Current deployment model is optimized for a modular monolith and has not yet been migrated to a full cloud-native multi-service architecture.
+\end{itemize}
+
+\section{Future Work}
+
+Future development can focus on the following directions:
+\begin{itemize}
+    \item Introduce queue-based asynchronous pipelines for heavy operations and burst smoothing.
+    \item Expand performance testing with larger concurrent-user profiles and long-duration soak tests.
+    \item Add centralized observability with metrics, tracing, and production-grade alert thresholds.
+    \item Strengthen security posture through rate-limit tuning, abuse detection, and secret/key rotation automation.
+    \item Extend recommendation and support intelligence with richer context retrieval and conversation quality evaluation.
+\end{itemize}
+
+\section{Closing Remarks}
+
+The implemented backend demonstrates that combining transactional consistency controls with real-time support orchestration is feasible within a maintainable architecture for e-commerce systems. The current result provides a strong technical foundation for production hardening and future platform expansion.

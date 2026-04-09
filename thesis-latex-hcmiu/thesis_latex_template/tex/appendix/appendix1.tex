@@ -1,0 +1,53 @@
+﻿\chapter{Additional Technical Materials}
+\label{app:additional}
+
+\section{API Endpoint Summary}
+
+This appendix can list endpoint groups used in the backend:
+\begin{itemize}
+    \item /api/v1/auth
+    \item /api/v1/catalog
+    \item /api/v1/cart
+    \item /api/v1/checkout
+    \item /api/v1/payment
+    \item /api/v1/chat
+\end{itemize}
+
+\section{Redis Key Namespace}
+
+Recommended documentation table for Redis keys:
+\begin{table}[H]
+\centering
+\caption{Redis Key Patterns Used in the Backend}
+\label{tab:redis-key-patterns}
+\begin{tabular}{|p{4.5cm}|p{7.5cm}|}
+\hline
+\textbf{Key Pattern} & \textbf{Purpose} \\
+\hline
+reservation:\{orderId\}:items & Reserved stock snapshot per order \\
+\hline
+reservation:\{orderId\}:vouchers & Reserved voucher snapshot per order \\
+\hline
+reservation:\{orderId\}:ttl & Reservation expiration trigger \\
+\hline
+chat:staff:online & Online staff set for chat assignment \\
+\hline
+chat:staff:\{staffId\}:hb & Staff heartbeat TTL key \\
+\hline
+chat:session:\{sessionUuid\}:state & Chat mode/status cache \\
+\hline
+\end{tabular}
+\end{table}
+
+\section{Additional Sequence Diagrams}
+
+Place extended sequence diagrams that are too detailed for the main chapters, for example:
+\begin{itemize}
+    \item Reservation rollback after TTL expiration.
+    \item Payment callback idempotency handling.
+    \item Staff heartbeat expiration and chat reassignment.
+\end{itemize}
+
+\section{Configuration Snapshot}
+
+This appendix can include a sanitized configuration example for reproducibility, without exposing secrets.

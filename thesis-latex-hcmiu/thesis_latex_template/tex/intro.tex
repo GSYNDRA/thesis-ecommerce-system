@@ -1,0 +1,90 @@
+﻿\chapter{INTRODUCTION}
+\label{ch:introduction}
+
+\section{Background}
+
+The rapid growth of fashion e-commerce has increased competition among online retailers and raised customer expectations for fast, reliable, and personalized services. Traditional e-commerce systems often rely on manual customer support and synchronous processing patterns that are difficult to scale during high-traffic periods such as seasonal campaigns and flash sales.
+
+Recent advances in AI-assisted customer support and real-time communication provide an opportunity to improve service responsiveness. However, practical deployment in production still requires strong backend engineering, especially for authentication security, checkout consistency, payment callback correctness, and resilient customer support workflows.
+
+\section{Problem Statement}
+
+Despite market growth, many fashion e-commerce platforms still face backend limitations in three critical areas. First, customer support workflows are often inefficient: chatbot-only systems fail on complex cases, while manual-only support does not scale. Second, transactional consistency during checkout is vulnerable to race conditions when stock and discount quotas are accessed concurrently. Third, payment finalization and callback handling can become unreliable without robust verification and idempotent processing.
+
+These gaps motivate the need for a backend architecture that combines secure API design, concurrency-safe reservation control, and real-time support escalation.
+
+\section{Scope}
+
+\subsection{In Scope}
+
+This thesis focuses on backend design and implementation for the following modules:
+\begin{itemize}
+    \item Authentication and session security: register, email verification, login, refresh token, logout, and password reset.
+    \item Product catalog APIs and query filtering for product discovery.
+    \item Cart lifecycle management with stock-aware validation and cart state control.
+    \item Checkout reservation engine using Redis for stock and voucher reservation under concurrency.
+    \item Payment callback handling with signature verification and order finalization.
+    \item Real-time AI chat with human handoff using Socket.IO, staff availability, and reassignment logic.
+\end{itemize}
+
+\subsection{Out of Scope}
+
+The following areas are not the primary focus of this thesis:
+\begin{itemize}
+    \item Frontend UI/UX design and usability experiments.
+    \item Native mobile application development.
+    \item Training custom large language models.
+    \item Full cloud-native microservices migration and large-scale production autoscaling.
+\end{itemize}
+
+\section{Objectives}
+
+The project objectives are:
+\begin{itemize}
+    \item Build a modular backend architecture for a fashion e-commerce platform with clear separation of API, service, and data layers.
+    \item Implement a consistent checkout flow with concurrency-safe reservation for stock and voucher resources.
+    \item Integrate payment callback processing with request verification and idempotent order updates.
+    \item Implement AI-assisted chat support with reliable human escalation and real-time session continuity.
+    \item Evaluate the backend in terms of performance, reliability, and maintainability.
+\end{itemize}
+
+\section{Assumptions and Proposed Approach}
+
+\subsection{Assumptions}
+
+\begin{itemize}
+    \item Users have stable network connectivity and standard web-client behavior.
+    \item External providers (AI and payment gateway) are reachable and respond within acceptable latency bounds.
+    \item Redis and PostgreSQL services are available for coordination and transactional persistence.
+\end{itemize}
+
+\subsection{Proposed Approach}
+
+\begin{itemize}
+    \item Use a modular monolithic backend architecture on Node.js and Express.
+    \item Keep PostgreSQL as the source of truth for domain and transactional data.
+    \item Use Redis for short-lived coordination state such as reservations, chat state, and heartbeats.
+    \item Use Socket.IO for real-time support communication and handoff orchestration.
+    \item Use explicit validation, error boundaries, and signature verification to improve operational safety.
+\end{itemize}
+
+\section{Main Contributions}
+
+This thesis provides the following technical contributions:
+\begin{itemize}
+    \item A backend module architecture that separates routing, orchestration, business logic, and persistence for maintainable development.
+    \item An atomic reservation strategy for stock and voucher quotas using Redis keys and Lua-based coordination.
+    \item A payment finalization flow with callback signature validation and idempotent processing safeguards.
+    \item A real-time AI chat workflow with human escalation, staff heartbeat monitoring, and reassignment handling.
+\end{itemize}
+
+\section{Thesis Structure}
+
+The remainder of this thesis is organized as follows:
+\begin{itemize}
+    \item Chapter 2 reviews related work in e-commerce backend systems, chatbot support, real-time communication, and scalability techniques.
+    \item Chapter 3 presents the methodology, including architecture design, data model design, and workflow modeling.
+    \item Chapter 4 describes implementation details for the six core backend features.
+    \item Chapter 5 discusses evaluation results, design trade-offs, and system limitations.
+    \item Chapter 6 concludes the thesis and outlines directions for future work.
+\end{itemize}

@@ -1,0 +1,210 @@
+\chapter{IMPLEMENTATION}
+\label{ch:implementation}
+
+\section{Implementation Environment}
+
+\subsection{Technology Stack}
+
+\begin{itemize}
+    \item Runtime and API framework: Node.js (ESM) with Express.
+    \item Persistence: PostgreSQL with Sequelize ORM.
+    \item Coordination and short-lived state: Redis.
+    \item Realtime communication: Socket.IO.
+    \item Payment integration: MoMo payment API (create payment and IPN callback).
+    \item AI integration: provider-based AI service (OpenAI/OpenRouter via config).
+\end{itemize}
+
+\subsection{Runtime Initialization}
+
+\begin{itemize}
+    \item Server entrypoint initializes PostgreSQL, Redis client, HTTP server, and Socket.IO.
+    \item Redis expiry subscribers are started for reservation rollback and staff heartbeat timeout handling.
+    \item Environment configuration is validated by Zod schema before startup.
+    \item Graceful shutdown closes HTTP server, websocket server, subscribers, Redis, and PostgreSQL connection.
+\end{itemize}
+
+\section{Backend Module Organization}
+
+The backend follows a layered modular structure.
+
+\begin{table}[H]
+\centering
+\caption{Backend Module Structure}
+\label{tab:impl-module-structure}
+\begin{tabular}{|p{3.2cm}|p{8.2cm}|}
+\hline
+\textbf{Module} & \textbf{Responsibility} \\
+\hline
+\texttt{routes/} & Define HTTP endpoints and bind middleware/controller handlers. \\
+\hline
+\texttt{controllers/} & Parse request context, call services, map responses. \\
+\hline
+\texttt{services/} & Core business logic and cross-service orchestration. \\
+\hline
+\texttt{reponsitories/} & Data access abstraction on top of Sequelize models. \\
+\hline
+\texttt{models/} & Database schema mapping and entity relations. \\
+\hline
+\texttt{validations/} & Zod-based request payload schema validation. \\
+\hline
+\texttt{middlewares/} & Auth, validation, and HTTP boundary concerns. \\
+\hline
+\texttt{websocket/} & Socket.IO auth and event handlers for chat and staff workflow. \\
+\hline
+\end{tabular}
+\end{table}
+
+API routes are grouped under \texttt{/api/v1}: \texttt{auth}, \texttt{catalog}, \texttt{cart}, \texttt{checkout}, \texttt{payment}, \texttt{chat}, and \texttt{redis} (debug).
+
+\begin{figure}[H]
+\centering
+\fbox{\parbox{0.88\textwidth}{
+\centering
+Placeholder for module structure image\\
+Suggested file: \texttt{figures/ch4\_module\_structure.png}
+}}
+\caption{Backend Module Structure in Source Code}
+\label{fig:impl-module-structure}
+\end{figure}
+
+\section{Core Feature Implementation}
+
+\subsection{Feature 1: Authentication and Session Security}
+
+Implemented in \texttt{auth.route.js}, \texttt{auth.controller.js}, and \texttt{auth.service.js}.
+\begin{itemize}
+    \item Registration and verification:
+    \texttt{POST /auth/register}, \texttt{GET /auth/verify-email}, \texttt{POST /auth/resend-verification}.
+    \item Login and token lifecycle:
+    \texttt{POST /auth/login}, \texttt{POST /auth/refresh-token}, \texttt{POST /auth/logout}.
+    \item Password recovery:
+    \texttt{POST /auth/forgot-password}, \texttt{POST /auth/verify-otp}, \texttt{POST /auth/reset-password}, \texttt{POST /auth/resend-otp}.
+    \item Security controls include bcrypt hashing, access/refresh token separation, and session invalidation logic.
+\end{itemize}
+
+\begin{figure}[H]
+\centering
+\fbox{\parbox{0.88\textwidth}{
+\centering
+Placeholder for authentication API evidence\\
+Suggested file: \texttt{figures/ch4\_auth\_api\_evidence.png}
+}}
+\caption{Authentication API Implementation Evidence}
+\label{fig:impl-auth-evidence}
+\end{figure}
+
+\subsection{Feature 2: Product Catalog and Query Filtering}
+
+Implemented in \texttt{catalog.route.js} and \texttt{catalog.service.js}.
+\begin{itemize}
+    \item \texttt{GET /catalog/products}: paginated listing with filter and sorting support.
+    \item \texttt{GET /catalog/products/:slug}: detailed product response by slug.
+    \item \texttt{GET /catalog/filters}: filter metadata for frontend querying.
+    \item Catalog service maps relational product data into API response payloads for list and detail views.
+\end{itemize}
+
+\subsection{Feature 3: Cart Lifecycle Management}
+
+Implemented in \texttt{cart.route.js}, \texttt{cart.controller.js}, and \texttt{cart.service.js}.
+\begin{itemize}
+    \item \texttt{POST /cart/add}: validates variation and stock before append/update.
+    \item \texttt{GET /cart}: returns authenticated user's active cart snapshot.
+    \item \texttt{PATCH /cart/items/:cartItemId}: quantity update with stock recheck.
+    \item \texttt{DELETE /cart/items/:cartItemId}: remove item from active cart.
+    \item Service guards include user existence check, active-cart resolution, cart lock protection, and snapshot recomputation.
+\end{itemize}
+
+\subsection{Feature 4: Checkout and Reservation Engine}
+
+Implemented in \texttt{checkout.route.js} and \texttt{checkout.service.js}.
+\begin{itemize}
+    \item \texttt{GET /checkout/preview}: validates cart items, computes subtotal/discount, and checks reservation capacity.
+    \item \texttt{POST /checkout/place-order}: creates pending order and payment intent after atomic reservation.
+    \item \texttt{GET /checkout/order-status/:orderId}: polls payment and order state.
+    \item Redis Lua script performs atomic reservation for stock and voucher counters.
+    \item Reservation metadata is cached to support deterministic rollback and post-payment reconciliation.
+\end{itemize}
+
+\begin{figure}[H]
+\centering
+\fbox{\parbox{0.88\textwidth}{
+\centering
+Placeholder for reservation evidence (Redis keys / checkout snapshot)\\
+Suggested file: \texttt{figures/ch4\_checkout\_reservation\_evidence.png}
+}}
+\caption{Checkout Reservation State Evidence}
+\label{fig:impl-checkout-reservation-evidence}
+\end{figure}
+
+\subsection{Feature 5: Payment Callback and Order Finalization}
+
+Implemented in \texttt{payment.route.js}, \texttt{payment.controller.js}, and \texttt{payment.service.js}.
+\begin{itemize}
+    \item \texttt{POST /payment/momo/ipn}: receives MoMo callback and verifies signature.
+    \item \texttt{GET /payment/momo/redirect}: redirects return params to frontend result route.
+    \item Finalization flow updates order state, persists order items/discounts, adjusts stock, and clears purchased cart items.
+    \item Callback handling applies idempotent processing strategy for repeated notifications.
+\end{itemize}
+
+\begin{figure}[H]
+\centering
+\fbox{\parbox{0.88\textwidth}{
+\centering
+Placeholder for payment callback evidence (IPN logs/result)\\
+Suggested file: \texttt{figures/ch4\_payment\_ipn\_evidence.png}
+}}
+\caption{Payment Callback and Finalization Evidence}
+\label{fig:impl-payment-evidence}
+\end{figure}
+
+\subsection{Feature 6: Real-Time AI Chat and Human Handoff}
+
+Implemented across \texttt{chat.route.js}, \texttt{chat.service.js}, \texttt{staff.service.js}, and \texttt{websocket/}.
+\begin{itemize}
+    \item Session operations:
+    \texttt{GET /chat/session/active},
+    \texttt{GET /chat/session/:sessionUuid/history},
+    \texttt{POST /chat/session/:sessionUuid/request-human},
+    \texttt{POST /chat/session/:sessionUuid/close}.
+    \item Staff operations:
+    \texttt{POST /chat/staff/availability},
+    \texttt{GET /chat/staff/workload}.
+    \item Socket middleware authenticates users and joins role-based rooms.
+    \item Chat service supports AI-first replies, intent routing, and escalation to human support.
+    \item Staff service handles assignment, heartbeat monitoring, disconnect recovery, and reassignment.
+\end{itemize}
+
+\begin{figure}[H]
+\centering
+\fbox{\parbox{0.88\textwidth}{
+\centering
+Placeholder for chat handoff evidence (assignment/reassignment events)\\
+Suggested file: \texttt{figures/ch4\_chat\_handoff\_evidence.png}
+}}
+\caption{AI Chat to Human Handoff Implementation Evidence}
+\label{fig:impl-chat-handoff-evidence}
+\end{figure}
+
+\section{Cross-Cutting Engineering Concerns}
+
+\subsection{Validation, Security, and Error Boundaries}
+
+\begin{itemize}
+    \item Request validation is enforced at route boundary by Zod schemas and validation middleware.
+    \item Protected routes use JWT middleware before service execution.
+    \item Security headers are enabled by Helmet and payload compression by \texttt{compression}.
+    \item Service-layer errors are propagated to controller-level response handling.
+\end{itemize}
+
+\subsection{Observability and Operational Safety}
+
+\begin{itemize}
+    \item Winston daily rotation logs are configured for info and error channels.
+    \item Reservation expiry subscriber triggers rollback for stale pending orders.
+    \item Staff heartbeat expiry subscriber marks staff offline and triggers reassignment logic.
+    \item Graceful shutdown ensures clean closure of HTTP, socket, Redis, and PostgreSQL resources.
+\end{itemize}
+
+\section{Chapter Summary}
+
+This chapter presents the concrete backend realization of the proposed architecture, from API layering to reliability mechanisms such as atomic reservation, idempotent payment finalization, and chat continuity reassignment. The next chapter evaluates these implementations using functional and non-functional criteria.

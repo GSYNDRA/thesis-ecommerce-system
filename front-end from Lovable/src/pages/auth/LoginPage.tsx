@@ -36,7 +36,8 @@ function canAccessTargetByRole(role: ChatRole | null, target: string): boolean {
 }
 
 function getDefaultTargetByRole(role: ChatRole | null): string {
-  if (role === "staff") return "/";
+  if (role === "customer") return "/products";
+  if (role === "staff") return "/staff/support";
   return "/";
 }
 

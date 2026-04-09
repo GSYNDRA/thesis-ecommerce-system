@@ -1,0 +1,53 @@
+﻿@startuml
+title Use Case Coverage for Backend Interactions
+left to right direction
+
+skinparam shadowing false
+skinparam packageStyle rectangle
+skinparam defaultTextAlignment center
+skinparam actorStyle awesome
+skinparam usecase {
+  BackgroundColor #FFFFFF
+  BorderColor #374151
+  ArrowColor #4B5563
+}
+
+actor "Customer" as Customer
+actor "Support Staff" as Staff
+actor "Administrator" as Admin
+
+actor "MoMo Gateway" as MoMo
+actor "AI Provider" as AI
+actor "Email Service" as Email
+
+rectangle "Intelligent Fashion E-Commerce Backend" {
+  usecase "Account & Session\n(Register/Login/Recovery)" as UC_Account
+  usecase "Browse Catalog" as UC_Catalog
+  usecase "Manage Cart" as UC_Cart
+  usecase "Checkout Preview\n& Reserve" as UC_Checkout
+  usecase "Place Order\n& Payment Request" as UC_Order
+  usecase "Process Payment Callback" as UC_PaymentCallback
+  usecase "AI Chat Support" as UC_Chat
+  usecase "Human Escalation\n& Staff Reassign" as UC_Handoff
+  usecase "Admin Management\n(Products/Discounts)" as UC_AdminManage
+}
+
+Customer --> UC_Account
+Customer --> UC_Catalog
+Customer --> UC_Cart
+Customer --> UC_Checkout
+Customer --> UC_Order
+Customer --> UC_Chat
+Customer --> UC_Handoff
+
+Staff --> UC_Handoff
+Admin --> UC_AdminManage
+
+UC_PaymentCallback <-- MoMo
+UC_Chat <-- AI
+UC_Account <-- Email
+
+UC_Order .> UC_Checkout : <<include>>
+UC_Handoff .> UC_Chat : <<extend>>
+
+@enduml
