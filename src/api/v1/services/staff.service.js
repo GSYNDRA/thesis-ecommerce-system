@@ -28,7 +28,7 @@ export class StaffService {
     }
     return normalized;
   }
-
+  
   async safeSetChatState(sessionUuid, state) {
     try {
       await this.chatRedisService.setChatState(sessionUuid, state);
